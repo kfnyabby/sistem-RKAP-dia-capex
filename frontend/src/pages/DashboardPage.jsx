@@ -1,155 +1,351 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import {
-  LayoutDashboard,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
-  ShieldCheck,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function DashboardPage() {
-  const [healthStatus, setHealthStatus] = useState({ loading: true, data: null, error: null });
-  const [dbStatus, setDbStatus] = useState({ loading: true, data: null, error: null });
-
-  useEffect(() => {
-    // Check backend health
-    axios
-      .get('/api/health')
-      .then((res) => setHealthStatus({ loading: false, data: res.data, error: null }))
-      .catch((err) => setHealthStatus({ loading: false, data: null, error: err.message }));
-
-    // Check database
-    axios
-      .get('/api/test-db')
-      .then((res) => setDbStatus({ loading: false, data: res.data, error: null }))
-      .catch((err) =>
-        setDbStatus({ loading: false, data: null, error: err.response?.data?.error || err.message })
-      );
-  }, []);
-
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <LayoutDashboard className="w-6 h-6 text-purple-700" />
-          Dashboard Utama
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Ringkasan progres penyusunan RKAP, kontrol realisasi, dan status sistem DIA CAPEX.
+    <main className="mn">
+      <div className="hd">
+        <h1>Dashboard Akuntansi</h1>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <span className="chip nt">CN · RKAP 2027</span>
+          <span className="chip wn">Data contoh</span>
+        </div>
+      </div>
+
+      {/* Quick Access Grid */}
+      <div className="qa">
+        {/* ENTRY */}
+        <div className="qc">
+          <span className="ic" style={{ background: '#FDE7E2' }}>
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#D9533D"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M7 3h7l4 4v14H7z" />
+              <path d="M14 3v4h4M10 12h5M10 16h5" />
+            </svg>
+          </span>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ color: '#D9533D' }}>ENTRY</h3>
+            <Link to="/entry?tab=biaya">
+              Anggaran Biaya
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+            <Link to="/entry?tab=investasi">
+              Anggaran Investasi
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
+        {/* PROSES */}
+        <div className="qc">
+          <span className="ic" style={{ background: '#FBEFD2' }}>
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#B7791F"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
+            </svg>
+          </span>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ color: '#B7791F' }}>PROSES</h3>
+            <Link to="/proses?tab=validasi">
+              Antrian Validasi
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+            <Link to="/proses?tab=realisasi">
+              Input Realisasi
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
+        {/* DISPLAY */}
+        <div className="qc">
+          <span className="ic" style={{ background: '#DDF0E6' }}>
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2F7F5B"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="4" width="18" height="12" rx="1" />
+              <path d="M8 20h8M12 16v4M7 12l3-3 3 2 4-4" />
+            </svg>
+          </span>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ color: '#2F7F5B' }}>DISPLAY</h3>
+            <Link to="/display?type=biaya">
+              Anggaran Biaya
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+            <Link to="/display?type=investasi">
+              Anggaran Investasi
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+            <Link to="/display?type=permintaan">
+              Permintaan
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#5E6070"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="g4">
+        <div className="card">
+          <div className="lb">RKAP Biaya</div>
+          <div className="vl">Rp 2,50 M</div>
+        </div>
+        <div className="card">
+          <div className="lb">RKAP Investasi</div>
+          <div className="vl">Rp 1,80 M</div>
+        </div>
+        <div className="card">
+          <div className="lb">Pemakaian anggaran biaya</div>
+          <div className="vl">58%</div>
+          <div className="lb" style={{ marginTop: '2px' }}>
+            Rp 1,45 M dari Rp 2,50 M s.d. Okt
+          </div>
+          <div style={{ height: '6px', borderRadius: '3px', background: '#ECE8F5', marginTop: '10px' }}>
+            <i style={{ display: 'block', height: '6px', width: '58%', borderRadius: '3px', background: '#3D4E9C' }} />
+          </div>
+        </div>
+        <div className="card">
+          <div className="lb">Pemakaian anggaran investasi</div>
+          <div className="vl">34%</div>
+          <div className="lb" style={{ marginTop: '2px' }}>
+            Rp 0,61 M dari Rp 1,80 M s.d. Okt
+          </div>
+          <div style={{ height: '6px', borderRadius: '3px', background: '#ECE8F5', marginTop: '10px' }}>
+            <i style={{ display: 'block', height: '6px', width: '34%', borderRadius: '3px', background: '#3D4E9C' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Progres Pengisian Unit */}
+      <div className="card">
+        <h2>Progres pengisian unit</h2>
+        <div style={{ display: 'flex', height: '34px', borderRadius: '8px', overflow: 'hidden' }}>
+          <i
+            style={{
+              flex: 20,
+              background: '#B9B4C9',
+              color: '#1F2233',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontStyle: 'normal',
+              fontSize: '12px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              padding: '0 6px',
+            }}
+          >
+            Draft · 20
+          </i>
+          <i
+            style={{
+              flex: 8,
+              background: '#E0A030',
+              color: '#2B1B00',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontStyle: 'normal',
+              fontSize: '12px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              padding: '0 6px',
+            }}
+          >
+            Diajukan · 8
+          </i>
+          <i
+            style={{
+              flex: 15,
+              background: '#2F7F5B',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontStyle: 'normal',
+              fontSize: '12px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              padding: '0 6px',
+            }}
+          >
+            Disetujui · 15
+          </i>
+          <i
+            style={{
+              flex: 5,
+              background: '#232B4A',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontStyle: 'normal',
+              fontSize: '12px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              padding: '0 6px',
+            }}
+          >
+            Final · 5
+          </i>
+        </div>
+        <p style={{ margin: '10px 0 0', fontSize: '13px', color: '#5E6070' }}>
+          Draft: sedang diisi unit · Diajukan: menunggu Manager · Disetujui: lolos Manager, menunggu finalisasi · Final:
+          dikunci Akuntansi
+        </p>
+        <p style={{ margin: '6px 0 0' }}>
+          <span className="chip bd">2 unit melewati deadline</span>
         </p>
       </div>
 
-      {/* System Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Backend Status Card */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              API Backend
-            </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                healthStatus.data
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {healthStatus.loading ? 'Memeriksa...' : healthStatus.data ? 'Online' : 'Offline'}
-            </span>
-          </div>
-          <div className="mt-4">
-            <div className="text-lg font-bold text-slate-800">Express 5 REST API</div>
-            <p className="text-xs text-slate-500 mt-1">
-              {healthStatus.data
-                ? 'Endpoint /api/health aktif dan berjalan normal.'
-                : healthStatus.error || 'Menghubungkan ke server...'}
-            </p>
-          </div>
-        </div>
-
-        {/* Database Status Card */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Database
-            </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                dbStatus.data ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-              }`}
-            >
-              {dbStatus.loading ? 'Memeriksa...' : dbStatus.data ? 'Connected' : 'Error'}
-            </span>
-          </div>
-          <div className="mt-4">
-            <div className="text-lg font-bold text-slate-800">PostgreSQL (28 Tabel P0)</div>
-            <p className="text-xs text-slate-500 mt-1">
-              {dbStatus.data
-                ? `Terhubung ke DB. Server time: ${new Date(dbStatus.data.server_time).toLocaleTimeString()}`
-                : dbStatus.error || 'Memeriksa pool PostgreSQL...'}
-            </p>
-          </div>
-        </div>
-
-        {/* Fondasi Fase 0 Card */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Status Fase
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
-              Fase 0 (Fondasi)
-            </span>
-          </div>
-          <div className="mt-4">
-            <div className="text-lg font-bold text-slate-800">Arsitektur Modular</div>
-            <p className="text-xs text-slate-500 mt-1">
-              Tailwind CSS, React Router, Vitest, dan ESLint aktif.
-            </p>
-          </div>
-        </div>
+      {/* RKAP vs Realisasi per COA */}
+      <div className="card sc">
+        <h2>RKAP vs realisasi per COA</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>COA</th>
+              <th>Nama</th>
+              <th className="r">RKAP</th>
+              <th className="r">Realisasi</th>
+              <th>Pemakaian</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>5.8.3</td>
+              <td>Biaya Cetak &amp; Fotocopy</td>
+              <td className="r">8.500.000</td>
+              <td className="r">5.200.000</td>
+              <td>
+                <span className="chip ok">61% · Aman</span>
+              </td>
+            </tr>
+            <tr>
+              <td>5.2.4</td>
+              <td>Biaya Pemakaian Suku Cadang Medis</td>
+              <td className="r">640.000.000</td>
+              <td className="r">563.000.000</td>
+              <td>
+                <span className="chip wn">88% · Waspada</span>
+              </td>
+            </tr>
+            <tr>
+              <td>5.8.2</td>
+              <td>Biaya Pemakaian Alat Perkantoran</td>
+              <td className="r">120.000.000</td>
+              <td className="r">126.000.000</td>
+              <td>
+                <span className="chip bd">105% · Melebihi</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
-      {/* Placeholder Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>TOTAL RKAP BIAYA</span>
-            <TrendingUp className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">Rp 2.500.000.000</div>
-          <div className="text-xs text-slate-500 mt-1">Realisasi: Rp 1.450.000.000 (58%)</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>TOTAL RKAP INVESTASI</span>
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">Rp 1.800.000.000</div>
-          <div className="text-xs text-slate-500 mt-1">Realisasi: Rp 610.000.000 (34%)</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>STATUS UNIT KERJA</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">6 Unit</div>
-          <div className="text-xs text-slate-500 mt-1">CN: 3 Unit | CNH: 3 Unit</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>PERINGATAN ANGGARAN</span>
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 mt-2">0 Unit</div>
-          <div className="text-xs text-slate-500 mt-1">Ambang batas normal (&lt; 80%)</div>
-        </div>
-      </div>
-    </div>
+    </main>
   );
 }

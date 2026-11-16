@@ -45,3 +45,29 @@ Dokumen ini mencatat keputusan arsitektur, pemilihan alat, dan asumsi implementa
 * **Keputusan:** Mengonfigurasi ESLint (Flat Config) dan Prettier pada `backend/` dan `frontend/`.
 * **Alasan:** Memastikan konsistensi penulisan kode, deteksi dini sintaks tidak valid, dan kemudahan kolaborasi (aturan B3 & PRD Bagian 10).
 
+
+
+---
+
+## [2026-11-16] — Implementasi Frontend Berdasarkan Mockup HTML (`Mockup Sistem RKAP (DIA CAPEX).html`)
+
+### 1. Desain Sistem dan Token Visual Mockup
+* **Keputusan:**
+  * Mengadopsi secara presisi sistem token desain dari bundle HTML mockup:
+    * Warna latar belakang: `#FAF7F2` (warm neutral).
+    * Warna sidebar: `#232B4A` dengan item aktif `#3A4577` dan aksen teks `#D5D9EE`.
+    * Desain kartu `.card` dengan border `#E6E0D6` dan radius 8px.
+    * Status badges / chips: `.ok` (`#DDF1E4`, `#14532D`), `.wn` (`#FBE8C8`, `#7A3E00`), `.bd` (`#F8D9D6`, `#8A1F1B`), dan `.nt` (`#ECE8F5`, `#3A3F63`).
+    * Kartu akses cepat `.qa` / `.qc` dengan kode warna modul (ENTRY: `#D9533D`, PROSES: `#B7791F`, DISPLAY: `#2F7F5B`, LAPORAN: `#3D4E9C`).
+    * Tabel laporan rekap unit (`.rk`) dan tabel matriks ERP (`.mx`) dengan sticky header dan kolom sticky.
+* **Alasan:** Menjaga keselarasan 100% dengan tampilan prototype HTML yang disetujui pengguna.
+
+### 2. Struktur Modul dan Navigasi Antarmuka
+* **Keputusan:** Mengelompokkan seluruh 17 layar mockup ke dalam 6 rute utama dengan sub-tab interaktif:
+  * `/dashboard` — KPI ringkasan, progres pengisian unit, daftar unit terlambat, tabel RKAP vs Realisasi per COA.
+  * `/entry` — Sub-tab: Anggaran Biaya, Anggaran Investasi, Laptop & PC, Diklat & Tenaga, Usulan RKAP SDM.
+  * `/proses` — Sub-tab: Antrian Validasi (review, komentar, setujui, kembalikan dengan alasan), Input Realisasi (unggah jurnal, pratinjau, pemetaan unit alias).
+  * `/display` — Display form ACC Anggaran No. 002 dan monitor anggaran unit.
+  * `/laporan` — Sub-tab: Rekap Anggaran Gabungan CN & CNH, Matriks Unit × COA format ERP.
+  * `/pengaturan` — Sub-tab: Periode & Pengajuan, Master Data Barang Logistik, Pengguna & Penugasan Unit, Kategori Investasi & Kelompok Biaya, Audit Log.
+* **Alasan:** Memungkinkan pengalaman pengguna yang menyeluruh, terorganisir rapi, dan mudah diuji secara langsung.
