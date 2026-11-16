@@ -56,9 +56,19 @@ Urutan prioritas sumber kebenaran: DECISIONS.md, lalu AGENTS.md (stack dan struk
 | 31 | 2026-11-16 | **`AuditService.log` Siap Transaksi (Atomis)**: Fungsi audit menerima koneksi database klien opsional (`client = db`). | Memastikan catatan audit log tersimpan atau dibatalkan bersama-sama dalam transaksi mutasi data bisnis. | Disetujui |
 | 32 | 2026-11-16 | **Isolasi Lingkungan Pengujian**: Test suite membersihkan seluruh data uji (pengguna dummy, dokumen uji, sesi uji) di blok `afterAll`. | Mencegah residu data uji mengotori database development. | Disetujui |
 
-## E. Pertanyaan terbuka yang tidak memblokir Fase 1
+## E. Keputusan Fase 2 (Master Data)
+
+| # | Tanggal | Keputusan | Alasan | Status |
+|---|---|---|---|---|
+| 33 | 2026-11-16 | **Pemasangan `exceljs` dan `multer`**: `exceljs` digunakan untuk memproses pembacaan dan validasi file Excel multi-sheet, sedangkan `multer` menangani pengunggahan berkas secara sementara di memori buffer. | Memenuhi aturan B3 AGENTS.md untuk kebutuhan import master data xlsx tanpa menyimpan file residu di disk. | Disetujui |
+| 34 | 2026-11-16 | **Kolom Pelengkap `items` & Tabel `import_logs` (Migrasi 004)**: Menambahkan atribut kode produk, golongan, produsen, satuan jual, stok min/max, COA persediaan, dan tabel pelacak riwayat import. Kolom `items.coa_id` diperbolehkan NULL. | Menyesuaikan format import Master Barang Logistik ERP dan memungkinkan deteksi barang tanpa COA pada laporan kualitas data. | Disetujui |
+| 35 | 2026-11-16 | **Import Master COA 3 Sheet**: `POST /api/coas/import` memproses tiga sheet sekaligus (`Master COA`, `Kategori Biaya`, `Kategori Investasi`) dengan opsi `dry_run`. | Sesuai FR-M7; menjaga sinkronisasi hierarki akun, kelompok biaya, dan susut investasi dalam satu file acuan. | Disetujui |
+| 36 | 2026-11-16 | **Import Master Barang Logistik dengan Simulasi (`dry_run`)**: `POST /api/items/import` membaca sheet `MASTER_BARANG`, menghasilkan rekapitulasi analitik (dibaca, cocok, baru, COA berubah, HPP nol, tanpa COA, COA tak dikenal), serta daftar galat per baris. | Sesuai FR-M5, FR-M6, dan FR-M8; mencegah kesalahan fatal sebelum data di-commit ke database. | Disetujui |
+| 37 | 2026-11-16 | **Otorisasi Khusus Akuntansi untuk Mutasi Master**: PIC dan Manager hanya memiliki akses baca (`GET`), seluruh mutasi (CRUD dan import) diwajibkan role `akuntansi`. | Menjaga integritas data referensi seluruh unit di CN dan CNH. | Disetujui |
+
+## F. Pertanyaan terbuka yang tidak memblokir Fase 2
 - PRD nomor 4: berapa Manager per unit dan adakah persetujuan di atas Manager (memengaruhi Fase 5).
 - PRD nomor 9: hosting dan SSO (diantisipasi oleh baris 18).
 
-## F. Pertanyaan terbuka yang memblokir fase berikutnya
+## G. Pertanyaan terbuka yang memblokir fase berikutnya
 Lihat PRD bagian 14. Yang paling mendesak: nomor 6 (ambang investasi per item atau per baris), 12 (akun realisasi investasi), 13 (master dan harga CNH), 16 (format export matriks).

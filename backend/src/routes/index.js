@@ -2,18 +2,22 @@ const express = require('express');
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
 const healthRoutes = require('./health.routes');
+const masterRoutes = require('./master.routes');
 const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 const budgetDocRepository = require('../repositories/budgetDoc.repository');
 
 const router = express.Router();
 
+// Modul Health Check (starter - tanpa auth)
+router.use('/', healthRoutes);
+
 // Modul Auth & Users
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 
-// Modul Health Check (starter)
-router.use('/', healthRoutes);
+// Modul Master Data (Fase 2)
+router.use('/', masterRoutes);
 
 // Endpoint uji otorisasi unit (untuk verifikasi requireUnitAccess)
 router.get('/test-unit-access/:unit_id', requireAuth, requireUnitAccess, (req, res) => {

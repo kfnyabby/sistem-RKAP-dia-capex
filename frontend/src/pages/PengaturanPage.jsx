@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Settings, Database, Calendar, Users, Sliders, History } from 'lucide-react';
+import MasterDataView from '../components/master/MasterDataView';
 
 export default function PengaturanPage() {
   const [activeTab, setActiveTab] = useState('master');
@@ -15,14 +16,21 @@ export default function PengaturanPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <Settings className="w-6 h-6 text-purple-700" />
-          Pengaturan Sistem (Akuntansi)
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Pengelolaan master data, periode anggaran, akses pengguna, dan audit log sistem.
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Settings className="w-6 h-6 text-purple-700" />
+            Pengaturan Sistem (Akuntansi)
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Pengelolaan master data, periode anggaran, akses pengguna, dan audit log sistem.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+            Role: Akuntansi
+          </span>
+        </div>
       </div>
 
       {/* Settings Navigation Cards */}
@@ -54,23 +62,29 @@ export default function PengaturanPage() {
         })}
       </div>
 
-      {/* Tab Content Box */}
-      <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center">
-        <div className="max-w-md mx-auto space-y-3">
-          <h2 className="text-lg font-bold text-slate-800">
-            Panel {settingsTabs.find((t) => t.id === activeTab)?.label}
-          </h2>
-          <p className="text-sm text-slate-500">
-            CRUD master barang, COA, periode, hak akses pengguna, dan audit log akan
-            diimplementasikan pada Fase 1, 2, dan 3.
-          </p>
-          <div className="pt-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-              Khusus Role Akuntansi
-            </span>
+      {/* Tab Content */}
+      {activeTab === 'master' ? (
+        <MasterDataView />
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center">
+          <div className="max-w-md mx-auto space-y-3">
+            <h2 className="text-lg font-bold text-slate-800">
+              Panel {settingsTabs.find((t) => t.id === activeTab)?.label}
+            </h2>
+            <p className="text-sm text-slate-500">
+              {activeTab === 'periode' && 'Pengaturan periode RKAP aktif, batas waktu validasi, dan penutupan otomatis (Fase 3).'}
+              {activeTab === 'users' && 'Manajemen pengguna, penugasan unit kerja, dan hak akses sistem.'}
+              {activeTab === 'ambang' && 'Konfigurasi ambang investasi DIA CAPEX, akun realisasi, dan parameter bisnis.'}
+              {activeTab === 'audit' && 'Riwayat log audit perubahan data transaksi dan master sistem.'}
+            </p>
+            <div className="pt-2">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                Khusus Role Akuntansi
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

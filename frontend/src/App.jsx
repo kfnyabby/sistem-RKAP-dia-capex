@@ -42,6 +42,14 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="pengaturan/master-data"
+              element={
+                <ProtectedRoute allowedRoles={['akuntansi']}>
+                  <PengaturanPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           {/* Fallback */}

@@ -32,10 +32,13 @@
 
 @layer base {
   body {
-    @apply bg-canvas text-text-main antialiased;
+    background-color: var(--color-canvas);
+    color: var(--color-text-main);
     font-family: var(--font-sans);
     font-size: 14px;
     margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
