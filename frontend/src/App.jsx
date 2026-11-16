@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
+import ProtectedRoute from './auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
+import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import EntryPage from './pages/EntryPage';
 import ProsesPage from './pages/ProsesPage';
@@ -9,20 +12,42 @@ import PengaturanPage from './pages/PengaturanPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="entry" element={<EntryPage />} />
-          <Route path="proses" element={<ProsesPage />} />
-          <Route path="display" element={<DisplayPage />} />
-          <Route path="laporan" element={<LaporanPage />} />
-          <Route path="pengaturan" element={<PengaturanPage />} />
-        </Route>
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Rute Publik */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Rute Terproteksi */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="entry" element={<EntryPage />} />
+            <Route path="proses" element={<ProsesPage />} />
+            <Route path="display" element={<DisplayPage />} />
+            <Route path="laporan" element={<LaporanPage />} />
+            {/* Rute Pengaturan khusus Role Akuntansi */}
+            <Route
+              path="pengaturan"
+              element={
+                <ProtectedRoute allowedRoles={['akuntansi']}>
+                  <PengaturanPage />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

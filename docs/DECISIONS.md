@@ -1,47 +1,41 @@
-# DECISIONS.md — Catatan Keputusan Arsitektur & Teknis Sistem RKAP
+# DECISIONS.md — Catatan Keputusan Sistem RKAP (DIA CAPEX)
 
-Dokumen ini mencatat keputusan arsitektur, pemilihan alat, dan asumsi implementasi proyek Sistem RKAP Terintegrasi (DIA CAPEX) untuk PT Cipta Nirmala (CN) dan Cipta Nirmala Husada (CNH).
+Cara pakai: setiap keputusan punya tanggal dan status. **Disetujui** = sudah diputuskan pemilik proyek. **Usulan** = default sementara agar pekerjaan bisa jalan; pemilik proyek mengubahnya bila perlu. Agent menambah baris baru di bagian bawah, tidak menghapus baris lama (bila berubah, tandai baris lama "Digantikan" dan rujuk baris baru).
 
----
+Urutan prioritas sumber kebenaran: DECISIONS.md, lalu AGENTS.md (stack dan struktur), lalu docs/PRD.md, lalu mockup, lalu PRD_Sistem_RKAP_DIA_CAPEX.pdf.
 
-## [2026-11-13] — Keputusan Fase 0: Fondasi Sistem RKAP
+## A. Keputusan yang sudah disetujui
 
-### 1. Struktur Backend Modular (CommonJS & Express 5)
-* **Keputusan:** Memecah struktur `backend/` menjadi pola arsitektur berlapis:
-  * `backend/src/routes/` — penanganan routing REST API per modul.
-  * `backend/src/controllers/` — pengontrol tipis untuk validasi request dan respons.
-  * `backend/src/services/` — pusat seluruh aturan bisnis (BR-xx).
-  * `backend/src/repositories/` — query SQL berparameter murni melalui `db.js`.
-  * `backend/src/middleware/` — middleware penanganan galat (`errorHandler`), otentikasi, dan otorisasi.
-* **Alasan:** Sesuai aturan arsitektur `AGENTS.md` (B4), React tidak memuat aturan bisnis dan controller tetap tipis. Pemisahan `src/app.js` dan `index.js` memungkinkan pengujian API otomatis dengan Supertest tanpa harus membuka socket server secara manual.
+| # | Tanggal | Keputusan | Alasan singkat | Status |
+|---|---|---|---|---|
+| 1 | 2026-11-13 | Stack mengikuti proyek yang berjalan: `backend/` Express 5 + `pg` (JavaScript CommonJS, tanpa ORM), `frontend/` React 19 + Vite + Axios (JSX). | Sudah ada kode awal; hemat perpindahan alat. | Disetujui |
+| 2 | 2026-11-13 | Untuk stack dan struktur folder, AGENTS.md menang atas PRD. | PRD lama masih menyebut Prisma dan `/server`. | Disetujui |
+| 3 | 2026-11-13 | Realisasi diambil dari **daftar jurnal** (xlsx) yang diunggah manual oleh Akuntansi, bukan API ERP. Realisasi biaya = DEBET − KREDIT per COA, unit, bulan (BR-05). | Sumber data yang tersedia; integrasi ERP ditunda. | Disetujui |
+| 4 | 2026-11-13 | Manager boleh mengajukan seperti PIC, tetapi pengaju tidak boleh menyetujui dokumennya sendiri (BR-07). | Prinsip dua mata. | Disetujui |
+| 5 | 2026-11-13 | Dokumen yang dikembalikan setelah pengisian ditutup (dan deadline validasi belum lewat) otomatis membuka akses unit untuk jenis anggaran itu; Akuntansi tetap bisa membuka atau menutup manual (BR-14). | Menghindari unit terkunci saat revisi. | Disetujui |
+| 6 | 2026-11-13 | Semua perubahan tersimpan otomatis; tidak ada tombol Simpan draft. | Permintaan pemilik proyek. | Disetujui |
+| 7 | 2026-11-13 | Lampiran file pada form investasi dihapus. | Permintaan pemilik proyek. | Disetujui |
+| 8 | 2026-11-13 | COA dan masa manfaat investasi otomatis dari Kategori Investasi (master); penyusutan = Jumlah ÷ masa manfaat × (12 − bulan rencana), Januari = 1 (BR-15, BR-16). | Sesuai Master COA. | Disetujui |
+| 9 | 2026-11-13 | Barang baru yang diminta PIC belum masuk total sampai Akuntansi menentukan COA-nya (BR-17, BR-18). | Permintaan pemilik proyek. | Disetujui |
 
-### 2. Alat Migrasi SQL Tanpa ORM
-* **Keputusan:** Menggunakan runner migrasi SQL berurutan berbasis file `.sql` di `backend/migrations/` dan dieksekusi melalui `backend/scripts/migrate.js` dengan pencatatan status di tabel `_migrations`.
-* **Alasan:** Menghindari kompleksitas dan overhead ORM, menjaga kueri SQL tetap eksplisit, native PostgreSQL, dan mudah diaudit sesuai instruksi `AGENTS.md` (B3). Seluruh 28 tabel skema P0 dan indeks wajib telah dibuat.
+## B. Keputusan Fase 1 (Auth dan RBAC)
 
-### 3. Data Seeder Fiktif (P0)
-* **Keputusan:** Menyediakan seeder fiktif yang realistis melalui `backend/seeds/seed_p0.js` (`npm run seed`):
-  * 2 Perusahaan: PT Cipta Nirmala (`CN`) dan Cipta Nirmala Husada (`CNH`).
-  * 5 Kelompok Organisasi (Instalasi dan Unit Bisnis).
-  * 6 Unit Kerja (MCU, Laboratorium, Rawat Inap 1, Klinik SG PPS, Klinik SG Veteran, Klinik Bogorejo).
-  * 14 COA (12 COA operasional utama + 2 COA penyusutan).
-  * 50 Master Barang Logistik dengan variasi harga per perusahaan (CN dan CNH) pada periode 2027.
-  * Master referensi: 5 jenis investasi, 4 prioritas, 7 kategori investasi beserta masa manfaat (bulan), dan pengaturan default sistem di tabel `settings`.
-* **Alasan:** Menjamin kerahasiaan data riil perusahaan (tidak memasukkan data produksi ke repositori sesuai aturan B7).
+| # | Tanggal | Keputusan | Alasan | Status |
+|---|---|---|---|---|
+| 10 | 2026-11-13 | **Satu pengguna, satu role** (kolom `users.role`: pic, manager, akuntansi). Mendukung respons API sesuai spesifikasi PRD PDF. | Kolom tunggal paling sederhana; Manager mewarisi hak PIC lewat aturan otorisasi server. | Disetujui |
+| 11 | 2026-11-13 | **Cakupan data = daftar unit yang ditugaskan eksplisit** (`user_unit_access`) untuk PIC dan Manager. Akuntansi memiliki wewenang ke semua unit di CN dan CNH. | Paling aman, eksplisit, dan mudah diuji pada middleware `requireUnitAccess`. | Disetujui |
+| 12 | 2026-11-13 | Hash kata sandi memakai **bcryptjs** (portabel dan tanpa isu kompilasi C++ di Windows). | Menjamin portabilitas lingkungan kerja lokal dan server. | Disetujui |
+| 13 | 2026-11-13 | Sesi: `express-session` + `connect-pg-simple`; tabel `"session"` di PostgreSQL; cookie `httpOnly`, `sameSite=lax`, `secure` di produksi. | Sesuai PRD (sesi cookie persisten di PostgreSQL). | Disetujui |
+| 14 | 2026-11-13 | CSRF: token double-submit lewat `GET /api/auth/csrf` dan header `X-CSRF-Token` pada setiap request non-GET. | Mencegah eksploitasi CSRF lintas situs pada cookie sesi. | Disetujui |
+| 15 | 2026-11-13 | Batas laju login: `express-rate-limit` membatasi 5 percobaan gagal per 15 menit per IP; pesan galat sama untuk email tidak dikenal dan kata sandi salah. | Mencegah serangan brute-force dan kebocoran keberadaan akun. | Disetujui |
+| 16 | 2026-11-13 | Tidak ada fitur reset password mandiri; Akuntansi yang mereset/mengganti kata sandi atau pengguna mengganti lewat `PUT /api/auth/password` saat aktif. | Sesuai teks resmi pada mockup layar Login. | Disetujui |
+| 17 | 2026-11-13 | Seed pengembangan berisi pengguna dev fiktif: Rina (`rina@ptcn.id` - PIC), Budi (`budi@ptcn.id` - Manager), Dya (`dya@ptcn.id` - Akuntansi), dan akun nonaktif untuk uji coba. | Mencegah paparan kredensial riil di repositori. | Disetujui |
+| 18 | 2026-11-13 | Middleware otorisasi modular (`requireAuth`, `requireRole`, `requireUnitAccess`, `csrfProtection`). | Memisahkan kekhawatiran dan memudahkan integrasi masa depan. | Disetujui |
+| 19 | 2026-11-13 | Sanitasi log audit: properti kata sandi dihapus sepenuhnya sebelum disimpan ke `audit_logs` atau dicetak ke log. | Mencegah kebocoran kata sandi di log dan jejak audit. | Disetujui |
 
-### 4. Pengujian Otomatis dengan Vitest & Supertest
-* **Keputusan:** Memasang `vitest` dan `supertest` di `backend/` untuk pengujian unit dan endpoint API.
-* **Alasan:** Vitest cepat, modern, dan kompatibel dengan pipeline pengujian Express 5. Satu suite pengujian otomatis dibuat pada `backend/tests/health.test.mjs` untuk memverifikasi endpoint `GET /api/health` dan root `/`.
+## C. Pertanyaan terbuka yang tidak memblokir Fase 1
+- PRD nomor 4: berapa Manager per unit dan adakah persetujuan di atas Manager (memengaruhi Fase 5).
+- PRD nomor 9: hosting dan SSO (diantisipasi oleh baris 18).
 
-### 5. Frontend UI: Tailwind CSS & React Router
-* **Keputusan:**
-  * Memasang `@tailwindcss/vite` (Tailwind v4) untuk styling utilitas yang cepat dan terintegrasi dengan Vite.
-  * Memasang `react-router-dom` (v7) untuk client-side routing SPA.
-  * Mengimplementasikan `MainLayout` dengan Sidebar berwarna ungu (`#23174f`) sesuai acuan prototype mockup PPT Ideabox "DIA CAPEX".
-  * Menyediakan 6 rute halaman utama: Dashboard (`/dashboard`), Entry (`/entry`), Proses (`/proses`), Display (`/display`), Laporan (`/laporan`), dan Pengaturan (`/pengaturan`).
-* **Alasan:** Memenuhi hierarki navigasi PRD Bagian 8 dan memastikan antarmuka siap menerima komponen interaktif pada fase-fase berikutnya.
-
-### 6. Standarisasi Kode: ESLint & Prettier
-* **Keputusan:** Mengonfigurasi ESLint (Flat Config) dan Prettier pada `backend/` dan `frontend/`.
-* **Alasan:** Memastikan konsistensi penulisan kode, deteksi dini sintaks tidak valid, dan kemudahan kolaborasi (aturan B3 & PRD Bagian 10).
-
+## D. Pertanyaan terbuka yang memblokir fase berikutnya
+Lihat PRD bagian 14. Yang paling mendesak: nomor 6 (ambang investasi per item atau per baris), 12 (akun realisasi investasi), 13 (master dan harga CNH), 16 (format export matriks).

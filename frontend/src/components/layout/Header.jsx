@@ -1,9 +1,33 @@
 import { useState } from 'react';
-import { Bell, ChevronDown, UserCircle2, Building2, Calendar } from 'lucide-react';
+import { Bell, ChevronDown, UserCircle2, Building2, Calendar, LogOut } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext';
 
 export default function Header() {
+  const { user, logout } = useAuth();
   const [selectedCompany, setSelectedCompany] = useState('CN');
   const [selectedPeriod, setSelectedPeriod] = useState('2027');
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const formatRole = (role) => {
+    switch ((role || '').toLowerCase()) {
+      case 'akuntansi':
+        return 'Akuntansi (Super Admin)';
+      case 'manager':
+        return 'Manager';
+      case 'pic':
+        return 'PIC Unit';
+      default:
+        return role;
+    }
+  };
+
+  const userCompanies =
+    user?.companies && user.companies.length > 0
+      ? user.companies
+      : [
+          { company_id: 1, code: 'CN', name: 'PT Cipta Nirmala (CN)' },
+          { company_id: 2, code: 'CNH', name: 'Cipta Nirmala Husada (CNH)' },
+        ];
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 sticky top-0 z-10 shadow-xs">
@@ -18,8 +42,11 @@ export default function Header() {
             onChange={(e) => setSelectedCompany(e.target.value)}
             className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
           >
-            <option value="CN">PT Cipta Nirmala (CN)</option>
-            <option value="CNH">Cipta Nirmala Husada (CNH)</option>
+            {userCompanies.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name || c.code}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -53,17 +80,48 @@ export default function Header() {
         <div className="h-6 w-px bg-slate-200" />
 
         {/* User Profile */}
-        <div className="flex items-center gap-3 cursor-pointer select-none">
-          <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700">
-            <UserCircle2 className="w-5 h-5" />
-          </div>
-          <div className="text-left hidden sm:block">
-            <div className="text-xs font-semibold text-slate-800 leading-tight">
-              Admin Akuntansi
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="flex items-center gap-3 cursor-pointer select-none p-1 rounded-lg hover:bg-slate-50 transition"
+          >
+            <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700 font-bold text-xs">
+              {user?.name ? (
+                user.name.slice(0, 2).toUpperCase()
+              ) : (
+                <UserCircle2 className="w-5 h-5" />
+              )}
             </div>
-            <div className="text-[11px] text-slate-500">Super Admin (CN & CNH)</div>
-          </div>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <div className="text-left hidden sm:block">
+              <div className="text-xs font-semibold text-slate-800 leading-tight">
+                {user?.name || 'Pengguna'}
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium">{formatRole(user?.role)}</div>
+            </div>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+
+          {/* Profile Dropdown */}
+          {showDropdown && (
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg p-2 z-50">
+              <div className="px-3 py-2 border-b border-slate-100">
+                <div className="text-xs font-semibold text-slate-800">{user?.name}</div>
+                <div className="text-[11px] text-slate-500 truncate">{user?.email}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDropdown(false);
+                  logout();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 mt-1 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Keluar Akun</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

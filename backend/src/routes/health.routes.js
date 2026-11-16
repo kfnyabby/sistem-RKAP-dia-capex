@@ -7,4 +7,3 @@ router.get('/health', healthController.getHealth);
 router.get('/test-db', healthController.getTestDb);
 
 module.exports = router;
-

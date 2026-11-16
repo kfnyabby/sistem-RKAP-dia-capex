@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 
 async function seed() {
@@ -276,6 +277,83 @@ async function seed() {
         [key, JSON.stringify(val), desc]
       );
     }
+
+    // 12. Users (3 dev users + 1 inactive user)
+    console.log('Seeding users...');
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash('password123', salt);
+
+    const usersData = [
+      {
+        id: 1,
+        name: 'Rina Pratiwi',
+        email: 'rina@ptcn.id',
+        role: 'pic',
+        is_active: true,
+        units: [1],
+      },
+      {
+        id: 2,
+        name: 'Budi Santoso',
+        email: 'budi@ptcn.id',
+        role: 'manager',
+        is_active: true,
+        units: [1, 2],
+      },
+      {
+        id: 3,
+        name: 'Dya Putri',
+        email: 'dya@ptcn.id',
+        role: 'akuntansi',
+        is_active: true,
+        units: [1, 2, 3, 4, 5, 6],
+      },
+      {
+        id: 4,
+        name: 'User Nonaktif',
+        email: 'nonaktif@ptcn.id',
+        role: 'pic',
+        is_active: false,
+        units: [1],
+      },
+    ];
+
+    for (const u of usersData) {
+      await client.query(
+        `
+        INSERT INTO users (id, name, email, password_hash, role, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (email) DO UPDATE SET
+          name = EXCLUDED.name,
+          password_hash = EXCLUDED.password_hash,
+          role = EXCLUDED.role,
+          is_active = EXCLUDED.is_active;
+      `,
+        [u.id, u.name, u.email, passwordHash, u.role, u.is_active]
+      );
+
+      await client.query(
+        `
+        INSERT INTO user_roles (user_id, role)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id, role) DO NOTHING;
+      `,
+        [u.id, u.role]
+      );
+
+      await client.query('DELETE FROM user_unit_access WHERE user_id = $1', [u.id]);
+      for (const unitId of u.units) {
+        await client.query(
+          `
+          INSERT INTO user_unit_access (user_id, unit_id)
+          VALUES ($1, $2)
+          ON CONFLICT (user_id, unit_id) DO NOTHING;
+        `,
+          [u.id, unitId]
+        );
+      }
+    }
+    await client.query("SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))");
 
     await client.query('COMMIT');
     console.log('--- Seed data fiktif selesai dan berhasil! ---');

@@ -16,4 +16,3 @@ describe('Health API Endpoints', () => {
     expect(res.body).toEqual({ message: 'API RKAP Server is running' });
   });
 });
-

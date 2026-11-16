@@ -8,4 +8,3 @@ const getDatabaseTime = async () => {
 module.exports = {
   getDatabaseTime,
 };
-

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import {
   LayoutDashboard,
   FileEdit,
@@ -10,16 +11,32 @@ import {
   Layers,
 } from 'lucide-react';
 
-const menuItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Entry', path: '/entry', icon: FileEdit },
-  { name: 'Proses', path: '/proses', icon: Workflow },
-  { name: 'Display', path: '/display', icon: Eye },
-  { name: 'Laporan', path: '/laporan', icon: FileSpreadsheet },
-  { name: 'Pengaturan', path: '/pengaturan', icon: Settings },
+const allMenuItems = [
+  {
+    name: 'Dashboard',
+    path: '/dashboard',
+    icon: LayoutDashboard,
+    roles: ['pic', 'manager', 'akuntansi'],
+  },
+  { name: 'Entry', path: '/entry', icon: FileEdit, roles: ['pic', 'manager', 'akuntansi'] },
+  { name: 'Proses', path: '/proses', icon: Workflow, roles: ['pic', 'manager', 'akuntansi'] },
+  { name: 'Display', path: '/display', icon: Eye, roles: ['pic', 'manager', 'akuntansi'] },
+  {
+    name: 'Laporan',
+    path: '/laporan',
+    icon: FileSpreadsheet,
+    roles: ['pic', 'manager', 'akuntansi'],
+  },
+  { name: 'Pengaturan', path: '/pengaturan', icon: Settings, roles: ['akuntansi'] }, // Khusus Akuntansi!
 ];
 
 export default function Sidebar() {
+  const { user, logout } = useAuth();
+  const userRole = (user?.role || 'pic').toLowerCase();
+
+  // Filter menu yang diizinkan untuk peran pengguna saat ini
+  const visibleMenuItems = allMenuItems.filter((item) => item.roles.includes(userRole));
+
   return (
     <aside className="w-64 bg-[#23174f] text-slate-200 flex flex-col shrink-0 min-h-screen border-r border-purple-900/40">
       {/* Brand Header */}
@@ -38,7 +55,7 @@ export default function Sidebar() {
         <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-purple-400 uppercase">
           Menu Utama
         </div>
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -63,8 +80,8 @@ export default function Sidebar() {
       <div className="p-3 border-t border-purple-800/40">
         <button
           type="button"
-          onClick={() => alert('Logout clicked')}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 transition-colors"
+          onClick={() => logout()}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4 shrink-0" />
           <span>Keluar</span>
@@ -73,4 +90,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-
