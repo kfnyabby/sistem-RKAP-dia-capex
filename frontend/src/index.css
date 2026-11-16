@@ -1,18 +1,64 @@
 @import 'tailwindcss';
 
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --color-canvas: #faf7f2;
+  --color-primary: #3d4e9c;
+  --color-primary-hover: #313f80;
+
+  --color-sidebar: #232b4a;
+  --color-sidebar-active: #3a4577;
+  --color-sidebar-text: #d5d9ee;
+
+  --color-card-border: #e6e0d6;
+  --color-input-border: #b9b4c9;
+
+  --color-text-main: #1f2233;
+  --color-text-muted: #5e6070;
+
+  --color-chip-ok-bg: #ddf1e4;
+  --color-chip-ok-text: #14532d;
+
+  --color-chip-wn-bg: #fbe8c8;
+  --color-chip-wn-text: #7a3e00;
+
+  --color-chip-bd-bg: #f8d9d6;
+  --color-chip-bd-text: #8a1f1b;
+
+  --color-chip-nt-bg: #ece8f5;
+  --color-chip-nt-text: #3a3f63;
+}
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
-    font-family:
-      Inter,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      Roboto,
-      Oxygen,
-      Ubuntu,
-      Cantarell,
-      sans-serif;
+    @apply bg-canvas text-text-main antialiased;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    margin: 0;
   }
+}
+
+.chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.chip.ok {
+  background-color: #ddf1e4;
+  color: #14532d;
+}
+.chip.wn {
+  background-color: #fbe8c8;
+  color: #7a3e00;
+}
+.chip.bd {
+  background-color: #f8d9d6;
+  color: #8a1f1b;
+}
+.chip.nt {
+  background-color: #ece8f5;
+  color: #3a3f63;
 }

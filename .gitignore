@@ -41,4 +41,5 @@ coverage/
 *.xlsx
 *.xls
 *.csv
+!backend/tests/fixtures/**
 

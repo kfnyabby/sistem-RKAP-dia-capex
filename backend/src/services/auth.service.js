@@ -1,12 +1,17 @@
 const bcrypt = require('bcryptjs');
 const userRepository = require('../repositories/user.repository');
+const sessionRepository = require('../repositories/session.repository');
 const auditService = require('./audit.service');
+
+// Hash tiruan valid bcrypt (cost 10) untuk menyamakan waktu komputasi saat email tidak ditemukan
+const DUMMY_HASH = '$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012';
 
 const login = async (email, password) => {
   const user = await userRepository.findByEmail(email);
 
-  // Email tidak dikenal -> pesan generik demi keamanan
+  // Email tidak dikenal -> lakukan komparasi tiruan agar waktu respons seragam (mitigasi timing attack)
   if (!user) {
+    await bcrypt.compare(password, DUMMY_HASH);
     const error = new Error('Email atau password salah');
     error.status = 401;
     throw error;
@@ -66,7 +71,7 @@ const getProfile = async (userId) => {
   };
 };
 
-const changePassword = async (userId, currentPassword, newPassword) => {
+const changePassword = async (userId, currentPassword, newPassword, currentSessionId = null) => {
   const user = await userRepository.findByEmail((await userRepository.findById(userId)).email);
   if (!user) {
     const error = new Error('User not found');
@@ -85,6 +90,9 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   const passwordHash = await bcrypt.hash(newPassword, salt);
 
   await userRepository.updatePassword(userId, passwordHash);
+
+  // Cabut sesi lain milik pengguna ini (sesi aktif di browser/perangkat lain)
+  await sessionRepository.revokeOtherUserSessions(userId, currentSessionId);
 
   // Catat audit (tanpa mencatat password)
   await auditService.log(userId, 'users', userId, 'update_password');

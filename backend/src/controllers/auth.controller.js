@@ -21,11 +21,22 @@ const login = async (req, res, next) => {
     const { email, password } = parseResult.data;
     const userProfile = await authService.login(email, password);
 
-    // Simpan ke sesi
-    req.session.userId = userProfile.user_id;
-    req.session.role = userProfile.role;
+    // Regenerasi sesi untuk mencegah session fixation dan buat CSRF token baru
+    req.session.regenerate((err) => {
+      if (err) {
+        return next(err);
+      }
 
-    res.json({ user: userProfile });
+      req.session.userId = userProfile.user_id;
+      req.session.role = userProfile.role;
+      const newCsrfToken = generateCsrfToken(req, true);
+
+      res.setHeader('X-CSRF-Token', newCsrfToken);
+      res.json({
+        user: userProfile,
+        csrf_token: newCsrfToken,
+      });
+    });
   } catch (err) {
     next(err);
   }
@@ -69,7 +80,12 @@ const updatePassword = async (req, res, next) => {
     }
 
     const { current_password, new_password } = parseResult.data;
-    const result = await authService.changePassword(req.user.id, current_password, new_password);
+    const result = await authService.changePassword(
+      req.user.id,
+      current_password,
+      new_password,
+      req.sessionID
+    );
     res.json(result);
   } catch (err) {
     next(err);

@@ -30,17 +30,22 @@ async function seed() {
     `);
     await client.query("SELECT setval('org_groups_id_seq', (SELECT MAX(id) FROM org_groups))");
 
-    // 3. Units (6 unit: 3 CN, 3 CNH)
+    // 3. Units (6 unit: 3 CN, 3 CNH) - Rentang fiktif 99xx
     console.log('Seeding units...');
     await client.query(`
       INSERT INTO units (id, company_id, group_id, code, name, classification) VALUES
-      (1, 1, 1, '9220', 'MCU', 'Penunjang Intermediate'),
-      (2, 1, 1, '9241', 'LABORATORIUM', 'Penunjang Intermediate'),
-      (3, 1, 3, '9110', 'RAWAT INAP 1', 'Pusat Biaya'),
-      (4, 2, 4, '9310', 'KLINIK SG PPS', 'Pusat Laba'),
-      (5, 2, 4, '9320', 'KLINIK SG VETERAN', 'Pusat Laba'),
-      (6, 2, 5, '9410', 'KLINIK BOGOREJO', 'Pusat Laba')
-      ON CONFLICT (company_id, code) DO UPDATE SET name = EXCLUDED.name, classification = EXCLUDED.classification;
+      (1, 1, 1, '9910', 'MCU', 'Penunjang Intermediate'),
+      (2, 1, 1, '9920', 'LABORATORIUM', 'Penunjang Intermediate'),
+      (3, 1, 3, '9930', 'RAWAT INAP 1', 'Pusat Biaya'),
+      (4, 2, 4, '9940', 'KLINIK SG PPS', 'Pusat Laba'),
+      (5, 2, 4, '9950', 'KLINIK SG VETERAN', 'Pusat Laba'),
+      (6, 2, 5, '9960', 'KLINIK BOGOREJO', 'Pusat Laba')
+      ON CONFLICT (id) DO UPDATE SET
+        company_id = EXCLUDED.company_id,
+        group_id = EXCLUDED.group_id,
+        code = EXCLUDED.code,
+        name = EXCLUDED.name,
+        classification = EXCLUDED.classification;
     `);
     await client.query("SELECT setval('units_id_seq', (SELECT MAX(id) FROM units))");
 
@@ -55,7 +60,7 @@ async function seed() {
       (5, '5.4', 'Biaya Penyusutan'),
       (6, '5.7', 'Biaya Rumah Tangga & Lingkungan'),
       (7, '5.8', 'Biaya Administrasi & Umum')
-      ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
+      ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name;
     `);
     await client.query("SELECT setval('coa_groups_id_seq', (SELECT MAX(id) FROM coa_groups))");
 
@@ -77,26 +82,15 @@ async function seed() {
       (12, 7, '5.8.3', 'Biaya Cetak & Fotocopy', 'biaya'),
       (13, 5, '5.4.2', 'Biaya Penyusutan Peralatan Medis', 'investasi'),
       (14, 5, '5.4.3', 'Biaya Penyusutan Peralatan Non Medis', 'investasi')
-      ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category;
+      ON CONFLICT (id) DO UPDATE SET
+        group_id = EXCLUDED.group_id,
+        code = EXCLUDED.code,
+        name = EXCLUDED.name,
+        category = EXCLUDED.category;
     `);
     await client.query("SELECT setval('coas_id_seq', (SELECT MAX(id) FROM coas))");
 
-    // 6. Investment Types
-    console.log('Seeding investment_types...');
-    await client.query(`
-      INSERT INTO investment_types (id, name) VALUES
-      (1, 'Tanah & Bangunan'),
-      (2, 'Peralatan Medis'),
-      (3, 'Peralatan Non Medis'),
-      (4, 'Knowledge'),
-      (5, 'Laptop/PC')
-      ON CONFLICT (name) DO NOTHING;
-    `);
-    await client.query(
-      "SELECT setval('investment_types_id_seq', (SELECT MAX(id) FROM investment_types))"
-    );
-
-    // 7. Priorities
+    // 6. Priorities
     console.log('Seeding priorities...');
     await client.query(`
       INSERT INTO priorities (id, name) VALUES
@@ -104,11 +98,11 @@ async function seed() {
       (2, 'Improvement'),
       (3, 'Regulasi'),
       (4, 'Keep Operation')
-      ON CONFLICT (name) DO NOTHING;
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
     `);
     await client.query("SELECT setval('priorities_id_seq', (SELECT MAX(id) FROM priorities))");
 
-    // 8. Investment Categories (Kategori Investasi & Masa Manfaat)
+    // 7. Investment Categories (Kategori Investasi & Masa Manfaat)
     console.log('Seeding investment_categories...');
     await client.query(`
       INSERT INTO investment_categories (id, name, useful_life_months, depreciation_coa_id) VALUES
@@ -119,19 +113,29 @@ async function seed() {
       (5, 'ASET TAK BERWUJUD', 48, NULL),
       (6, 'PC/LAPTOP', 60, 14),
       (7, 'AC 2 PK', 60, 14)
-      ON CONFLICT (name) DO UPDATE SET useful_life_months = EXCLUDED.useful_life_months, depreciation_coa_id = EXCLUDED.depreciation_coa_id;
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        useful_life_months = EXCLUDED.useful_life_months,
+        depreciation_coa_id = EXCLUDED.depreciation_coa_id;
     `);
     await client.query(
       "SELECT setval('investment_categories_id_seq', (SELECT MAX(id) FROM investment_categories))"
     );
 
-    // 9. Periods (2027)
+    // 8. Periods (2027)
     console.log('Seeding periods...');
     await client.query(`
       INSERT INTO periods (id, company_id, year, status, fill_deadline, review_deadline, lock_date, submission_state) VALUES
       (1, 1, 2027, 'PENGISIAN', '2026-11-20', '2026-12-01', '2026-12-05', 'BUKA'),
       (2, 2, 2027, 'PENGISIAN', '2026-11-20', '2026-12-01', '2026-12-05', 'BUKA')
-      ON CONFLICT (company_id, year) DO UPDATE SET status = EXCLUDED.status;
+      ON CONFLICT (id) DO UPDATE SET
+        company_id = EXCLUDED.company_id,
+        year = EXCLUDED.year,
+        status = EXCLUDED.status,
+        fill_deadline = EXCLUDED.fill_deadline,
+        review_deadline = EXCLUDED.review_deadline,
+        lock_date = EXCLUDED.lock_date,
+        submission_state = EXCLUDED.submission_state;
     `);
     await client.query("SELECT setval('periods_id_seq', (SELECT MAX(id) FROM periods))");
 
@@ -330,15 +334,6 @@ async function seed() {
           is_active = EXCLUDED.is_active;
       `,
         [u.id, u.name, u.email, passwordHash, u.role, u.is_active]
-      );
-
-      await client.query(
-        `
-        INSERT INTO user_roles (user_id, role)
-        VALUES ($1, $2)
-        ON CONFLICT (user_id, role) DO NOTHING;
-      `,
-        [u.id, u.role]
       );
 
       await client.query('DELETE FROM user_unit_access WHERE user_id = $1', [u.id]);

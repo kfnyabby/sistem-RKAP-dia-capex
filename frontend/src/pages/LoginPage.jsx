@@ -39,29 +39,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-[420px] bg-white border border-[#E6E0D6] rounded-2xl shadow-sm p-8 space-y-6">
-        {/* Header Mockup */}
+    <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-[400px] bg-white border border-card-border rounded-2xl shadow-sm p-8 space-y-4">
+        {/* Header Mockup 10-login.html */}
         <div className="text-center">
-          <div className="text-xs font-bold tracking-wider text-[#3D4E9C] uppercase">DIA CAPEX</div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Sistem RKAP</h1>
-          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+          <div className="text-[12px] tracking-[.08em] text-primary font-bold uppercase">
+            DIA CAPEX
+          </div>
+          <h1 className="text-xl font-bold text-text-main mt-1">Sistem RKAP</h1>
+          <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
             Masuk untuk mengisi dan memonitor anggaran biaya dan investasi.
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="p-3 bg-chip-bd-bg border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-chip-bd-text">
+            <AlertCircle className="w-4 h-4 text-chip-bd-text shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label htmlFor="em" className="block text-xs font-semibold text-slate-600 mb-1.5">
+            <label htmlFor="em" className="block text-xs text-text-muted mb-1">
               Email
             </label>
             <input
@@ -71,12 +73,12 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@ptcn.id"
-              className="w-full px-3.5 py-2.5 bg-white border border-[#B9B4C9] rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D4E9C] focus:border-transparent transition"
+              className="w-full px-3 py-2 bg-white border border-input-border rounded-[6px] text-sm text-text-main min-h-[44px] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
             />
           </div>
 
           <div>
-            <label htmlFor="pw" className="block text-xs font-semibold text-slate-600 mb-1.5">
+            <label htmlFor="pw" className="block text-xs text-text-muted mb-1">
               Kata sandi
             </label>
             <input
@@ -86,14 +88,14 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 bg-white border border-[#B9B4C9] rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D4E9C] focus:border-transparent transition"
+              className="w-full px-3 py-2 bg-white border border-input-border rounded-[6px] text-sm text-text-main min-h-[44px] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full min-h-[44px] bg-[#3D4E9C] hover:bg-[#2f3d7c] active:bg-[#253063] text-white font-medium text-sm rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full min-h-[44px] bg-primary hover:bg-primary-hover active:opacity-95 text-white font-medium text-sm rounded-[6px] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <span>Memproses...</span>
@@ -107,38 +109,38 @@ export default function LoginPage() {
         </form>
 
         {/* Quick Dev Switcher */}
-        <div className="pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 uppercase mb-2">
-            <Sparkles className="w-3 h-3 text-purple-600" />
+        <div className="pt-2 border-t border-card-border/60">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted uppercase mb-2">
+            <Sparkles className="w-3 h-3 text-primary" />
             <span>Pilih Akun Cepat (Dev Seed)</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={() => handleQuickLogin('rina@ptcn.id')}
-              className="px-2 py-1.5 bg-slate-100 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 border border-slate-200 rounded-md text-[11px] font-medium text-slate-700 transition cursor-pointer text-center"
+              className="px-2 py-1.5 bg-canvas hover:bg-primary/10 hover:text-primary border border-card-border rounded-md text-[11px] font-medium text-text-main transition cursor-pointer text-center"
             >
               PIC (Rina)
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('budi@ptcn.id')}
-              className="px-2 py-1.5 bg-slate-100 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 border border-slate-200 rounded-md text-[11px] font-medium text-slate-700 transition cursor-pointer text-center"
+              className="px-2 py-1.5 bg-canvas hover:bg-primary/10 hover:text-primary border border-card-border rounded-md text-[11px] font-medium text-text-main transition cursor-pointer text-center"
             >
               Manager (Budi)
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('dya@ptcn.id')}
-              className="px-2 py-1.5 bg-slate-100 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 border border-slate-200 rounded-md text-[11px] font-medium text-slate-700 transition cursor-pointer text-center"
+              className="px-2 py-1.5 bg-canvas hover:bg-primary/10 hover:text-primary border border-card-border rounded-md text-[11px] font-medium text-text-main transition cursor-pointer text-center"
             >
               Akuntansi (Dya)
             </button>
           </div>
         </div>
 
-        {/* Footer Mockup */}
-        <p className="text-center text-xs text-slate-500 leading-relaxed pt-1">
+        {/* Footer Mockup 10-login.html */}
+        <p className="text-center text-xs text-text-muted leading-relaxed pt-1">
           Lupa kata sandi? Hubungi Akuntansi.
           <br />
           Akun CN dan CNH memakai satu pintu masuk yang sama.

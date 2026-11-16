@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, ChevronDown, UserCircle2, Building2, Calendar, LogOut } from 'lucide-react';
+import { ChevronDown, UserCircle2, Building2, Calendar, LogOut } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 
 export default function Header() {
@@ -11,7 +11,7 @@ export default function Header() {
   const formatRole = (role) => {
     switch ((role || '').toLowerCase()) {
       case 'akuntansi':
-        return 'Akuntansi (Super Admin)';
+        return 'Akuntansi';
       case 'manager':
         return 'Manager';
       case 'pic':
@@ -30,84 +30,83 @@ export default function Header() {
         ];
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 sticky top-0 z-10 shadow-xs">
-      {/* Left: Quick Selectors */}
-      <div className="flex items-center gap-4">
-        {/* Company Selector */}
-        <div className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200/80 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700">
-          <Building2 className="w-4 h-4 text-purple-700 shrink-0" />
-          <span className="text-slate-400">Entitas:</span>
+    <header className="h-16 bg-white border-b border-card-border px-6 flex items-center justify-between shrink-0 sticky top-0 z-10">
+      {/* Quick Selectors & Brand Chips */}
+      <div className="flex items-center gap-3">
+        {/* Entitas */}
+        <div className="flex items-center gap-2 bg-canvas px-2.5 py-1.5 rounded-md border border-card-border text-xs text-text-muted">
+          <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>Entitas:</span>
           <select
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
-            className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
+            className="bg-transparent font-semibold text-text-main outline-none cursor-pointer border-0 p-0 min-h-0"
           >
             {userCompanies.map((c) => (
               <option key={c.code} value={c.code}>
-                {c.name || c.code}
+                {c.code}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Period Selector */}
-        <div className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200/80 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700">
-          <Calendar className="w-4 h-4 text-purple-700 shrink-0" />
-          <span className="text-slate-400">Tahun:</span>
+        {/* Periode */}
+        <div className="flex items-center gap-2 bg-canvas px-2.5 py-1.5 rounded-md border border-card-border text-xs text-text-muted">
+          <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>Tahun:</span>
           <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="bg-transparent font-semibold text-slate-800 outline-none cursor-pointer"
+            className="bg-transparent font-semibold text-text-main outline-none cursor-pointer border-0 p-0 min-h-0"
           >
             <option value="2027">RKAP 2027</option>
             <option value="2026">RKAP 2026</option>
           </select>
         </div>
+
+        {/* Chips sesuai mockup 01-dashboard.html */}
+        <span className="chip nt hidden sm:inline-block">
+          {selectedCompany} · RKAP {selectedPeriod}
+        </span>
       </div>
 
-      {/* Right: Notification & Profile */}
-      <div className="flex items-center gap-4">
-        {/* Notification Bell */}
-        <button
-          type="button"
-          title="Notifikasi"
-          className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-        </button>
-
-        <div className="h-6 w-px bg-slate-200" />
-
-        {/* User Profile */}
+      {/* Right: User Profile & Logout */}
+      <div className="flex items-center gap-3">
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-3 cursor-pointer select-none p-1 rounded-lg hover:bg-slate-50 transition"
+            className="flex items-center gap-2.5 cursor-pointer select-none p-1.5 rounded-lg hover:bg-canvas transition border border-transparent hover:border-card-border"
           >
-            <div className="w-8 h-8 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700 font-bold text-xs">
+            <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs">
               {user?.name ? (
                 user.name.slice(0, 2).toUpperCase()
               ) : (
-                <UserCircle2 className="w-5 h-5" />
+                <UserCircle2 className="w-5 h-5 text-primary" />
               )}
             </div>
             <div className="text-left hidden sm:block">
-              <div className="text-xs font-semibold text-slate-800 leading-tight">
+              <div className="text-xs font-semibold text-text-main leading-tight">
                 {user?.name || 'Pengguna'}
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">{formatRole(user?.role)}</div>
+              <div className="text-[11px] text-text-muted font-medium">
+                {formatRole(user?.role)}
+              </div>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
           </button>
 
           {/* Profile Dropdown */}
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg p-2 z-50">
-              <div className="px-3 py-2 border-b border-slate-100">
-                <div className="text-xs font-semibold text-slate-800">{user?.name}</div>
-                <div className="text-[11px] text-slate-500 truncate">{user?.email}</div>
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-card-border rounded-xl shadow-lg p-2 z-50">
+              <div className="px-3 py-2 border-b border-card-border/60">
+                <div className="text-xs font-semibold text-text-main">{user?.name}</div>
+                <div className="text-[11px] text-text-muted truncate">{user?.email}</div>
+                <div className="mt-1">
+                  <span className="chip nt text-[10px] py-0.5 px-2 font-semibold">
+                    {formatRole(user?.role)}
+                  </span>
+                </div>
               </div>
               <button
                 type="button"

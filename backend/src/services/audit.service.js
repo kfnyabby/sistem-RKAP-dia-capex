@@ -23,9 +23,18 @@ const sanitize = (data) => {
   return copy;
 };
 
-const log = async (actorId, entity, entityId, action, oldValue = null, newValue = null) => {
+const log = async (
+  actorId,
+  entity,
+  entityId,
+  action,
+  oldValue = null,
+  newValue = null,
+  client = db
+) => {
   try {
-    await db.query(
+    const executor = client || db;
+    await executor.query(
       `INSERT INTO audit_logs (actor_id, entity, entity_id, action, old_value, new_value)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
@@ -39,6 +48,9 @@ const log = async (actorId, entity, entityId, action, oldValue = null, newValue 
     );
   } catch (err) {
     console.error('AuditService error:', err.message);
+    if (client && client !== db) {
+      throw err;
+    }
   }
 };
 

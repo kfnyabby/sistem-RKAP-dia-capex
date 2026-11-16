@@ -169,6 +169,14 @@ const setUserUnits = async (userId, unitIds = []) => {
   }
 };
 
+const countActiveUsersByRole = async (role) => {
+  const result = await db.query(
+    'SELECT COUNT(*) as count FROM users WHERE role = $1 AND is_active = TRUE',
+    [role]
+  );
+  return parseInt(result.rows[0].count, 10);
+};
+
 module.exports = {
   findByEmail,
   findById,
@@ -180,4 +188,5 @@ module.exports = {
   updateStatus,
   updatePassword,
   setUserUnits,
+  countActiveUsersByRole,
 };

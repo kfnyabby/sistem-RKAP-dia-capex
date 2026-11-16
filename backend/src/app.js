@@ -7,6 +7,12 @@ const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const { csrfProtection } = require('./middleware/csrfProtection');
 
+// Validasi variabel lingkungan sesi wajib ada
+if (!process.env.SESSION_SECRET) {
+  console.error('FATAL: Variabel lingkungan SESSION_SECRET wajib diisi!');
+  process.exit(1);
+}
+
 const app = express();
 
 // Trust proxy if behind reverse proxy
@@ -32,7 +38,7 @@ app.use(
       tableName: 'session',
       createTableIfMissing: false,
     }),
-    secret: process.env.SESSION_SECRET || 'rkap-dia-capex-secret-key-2027',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {

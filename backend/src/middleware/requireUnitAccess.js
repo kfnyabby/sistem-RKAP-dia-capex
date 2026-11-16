@@ -12,8 +12,10 @@ const requireUnitAccess = async (req, res, next) => {
 
   const rawUnitId = req.params.unit_id || req.query.unit_id || req.body?.unit_id;
   if (!rawUnitId) {
-    // Jika endpoint tidak menargetkan unit tertentu, lanjutkan
-    return next();
+    // Fail-closed: Jika endpoint memproteksi data unit tetapi unit tidak dapat ditentukan, tolak 403
+    return res.status(403).json({
+      message: 'Akses ditolak: unit target tidak dapat ditentukan',
+    });
   }
 
   const targetUnitId = parseInt(rawUnitId, 10);
