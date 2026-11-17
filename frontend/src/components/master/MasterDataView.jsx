@@ -39,6 +39,9 @@ export default function MasterDataView() {
   const [investmentCategories, setInvestmentCategories] = useState([]);
   const [units, setUnits] = useState([]);
   const [unitCompanyFilter, setUnitCompanyFilter] = useState('');
+  const [unitReviewFilter, setUnitReviewFilter] = useState('');
+  const [unitActiveFilter, setUnitActiveFilter] = useState('');
+  const [unitSearch, setUnitSearch] = useState('');
   const [references, setReferences] = useState(null);
   const [qualityReport, setQualityReport] = useState(null);
 
@@ -105,6 +108,9 @@ export default function MasterDataView() {
     let active = true;
     masterApi.getUnits({
       company_id: unitCompanyFilter,
+      needs_review: unitReviewFilter,
+      is_active: unitActiveFilter,
+      q: unitSearch,
     }).then((res) => {
       if (active) setUnits(res.data || []);
     }).catch((err) => console.error('Units fetch error:', err));
@@ -112,7 +118,7 @@ export default function MasterDataView() {
     return () => {
       active = false;
     };
-  }, [unitCompanyFilter, refreshCounter]);
+  }, [unitCompanyFilter, unitReviewFilter, unitActiveFilter, unitSearch, refreshCounter]);
 
   useEffect(() => {
     let active = true;
@@ -730,27 +736,80 @@ export default function MasterDataView() {
       {/* ========================================================================= */}
       {subTab === 'unit' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-semibold text-slate-600">Filter Perusahaan:</label>
-              <select
-                value={unitCompanyFilter}
-                onChange={(e) => setUnitCompanyFilter(e.target.value)}
-                className="text-xs"
-              >
-                <option value="">Semua Perusahaan</option>
-                <option value="1">PT Cipta Nirmala (CN)</option>
-                <option value="2">PT Cipta Nirmala Husada (CNH)</option>
-              </select>
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Cari Unit Kerja</label>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={unitSearch}
+                    onChange={(e) => setUnitSearch(e.target.value)}
+                    placeholder="Nama, kode, atau ID draf..."
+                    className="w-full text-xs pl-9"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Perusahaan</label>
+                <select
+                  value={unitCompanyFilter}
+                  onChange={(e) => setUnitCompanyFilter(e.target.value)}
+                  className="w-full text-xs"
+                >
+                  <option value="">Semua Perusahaan</option>
+                  <option value="1">PT Cipta Nirmala (CN)</option>
+                  <option value="2">PT Cipta Nirmala Husada (CNH)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Status Review</label>
+                <select
+                  value={unitReviewFilter}
+                  onChange={(e) => setUnitReviewFilter(e.target.value)}
+                  className="w-full text-xs"
+                >
+                  <option value="">Semua Status Review</option>
+                  <option value="true">Perlu Review / Ada Isu</option>
+                  <option value="false">Selesai / Tanpa Isu</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Status Unit</label>
+                <select
+                  value={unitActiveFilter}
+                  onChange={(e) => setUnitActiveFilter(e.target.value)}
+                  className="w-full text-xs"
+                >
+                  <option value="">Semua Status</option>
+                  <option value="true">Aktif</option>
+                  <option value="false">Nonaktif</option>
+                </select>
+              </div>
+
+              <div className="flex items-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImportModal({ open: true, type: 'units' })}
+                  className="btn btn-secondary flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-primary-700" />
+                  <span>Import Draf Unit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUnitModal({ open: true, unit: null })}
+                  className="btn btn-primary py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Tambah</span>
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setUnitModal({ open: true, unit: null })}
-              className="btn btn-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Unit Kerja</span>
-            </button>
           </div>
 
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
@@ -759,61 +818,95 @@ export default function MasterDataView() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                     <th className="p-3 w-12 text-center">No.</th>
+                    <th className="p-3 font-mono">ID Draf</th>
                     <th className="p-3 font-mono">Kode</th>
-                    <th className="p-3 font-semibold">Nama Unit Kerja</th>
+                    <th className="p-3 font-semibold min-w-[200px]">Nama Unit Kerja</th>
                     <th className="p-3">Perusahaan</th>
-                    <th className="p-3">Klasifikasi / Instalasi</th>
+                    <th className="p-3">Klasifikasi</th>
                     <th className="p-3">COA Pendapatan</th>
+                    <th className="p-3 text-center">Status Review</th>
                     <th className="p-3 text-center">Status</th>
                     <th className="p-3 text-center w-20">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {units.map((unit, idx) => (
-                    <tr key={unit.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-3 text-center text-slate-400">{idx + 1}</td>
-                      <td className="p-3 font-mono font-bold text-primary-800">{unit.code}</td>
-                      <td className="p-3 font-medium text-slate-900">{unit.name}</td>
-                      <td className="p-3">
-                        <span className="font-semibold text-slate-700">{unit.company_code}</span>
-                      </td>
-                      <td className="p-3 text-slate-600">{unit.classification || '-'}</td>
-                      <td className="p-3">
-                        {unit.revenue_coa_code ? (
-                          <span className="text-slate-800">
-                            <span className="font-mono text-primary-700">{unit.revenue_coa_code}</span>{' '}
-                            {unit.revenue_coa_name}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Belum ditentukan</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-                            unit.is_active
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {unit.is_active ? 'Aktif' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setUnitModal({ open: true, unit })}
-                          className="p-1 rounded text-slate-500 hover:text-primary-700 hover:bg-slate-100"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
+                  {units.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="p-8 text-center text-slate-400">
+                        Tidak ada data unit kerja yang sesuai filter.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    units.map((unit, idx) => (
+                      <tr key={unit.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="p-3 text-center text-slate-400">{idx + 1}</td>
+                        <td className="p-3 font-mono text-purple-700 font-medium">
+                          {unit.source_key || '-'}
+                        </td>
+                        <td className="p-3 font-mono font-bold text-primary-800">
+                          {unit.code || <span className="text-amber-600 font-normal italic">(tanpa kode)</span>}
+                        </td>
+                        <td className="p-3 font-medium text-slate-900">{unit.name}</td>
+                        <td className="p-3">
+                          <span className="font-semibold text-slate-700">{unit.company_code}</span>
+                        </td>
+                        <td className="p-3 text-slate-600">{unit.classification || '-'}</td>
+                        <td className="p-3">
+                          {unit.revenue_coa_code ? (
+                            <span className="text-slate-800">
+                              <span className="font-mono text-primary-700">{unit.revenue_coa_code}</span>{' '}
+                              <span className="text-slate-600">{unit.revenue_coa_name}</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic">Belum ditentukan</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          {unit.needs_review ? (
+                            <span
+                              title={unit.review_notes || 'Perlu verifikasi Akuntansi'}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 cursor-help"
+                            >
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              Perlu Review
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              OK
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                              unit.is_active
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {unit.is_active ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setUnitModal({ open: true, unit })}
+                            className="p-1 rounded text-slate-500 hover:text-primary-700 hover:bg-slate-100"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
+          <p className="text-[11px] text-slate-500 leading-relaxed">
+            Unit diimpor dari draf spreadsheet dengan pencocokan pengenal unik <code>ID Draf</code> (source_key). Unit yang memiliki catatan isu, keputusan gabung, atau belum memiliki kode resmi ditandai <b>Perlu Review</b> untuk penanganan Akuntansi.
+          </p>
         </div>
       )}
 

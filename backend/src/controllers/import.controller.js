@@ -1,11 +1,12 @@
 const multer = require('multer');
 const masterImportService = require('../services/masterImport.service');
+const unitImportService = require('../services/unitImport.service');
 
 // Konfigurasi Multer (simpan di memori buffer)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // Maksimal 10MB
+  limits: { fileSize: 15 * 1024 * 1024 }, // Maksimal 15MB
   fileFilter: (req, file, cb) => {
     if (
       file.mimetype ===
@@ -56,9 +57,29 @@ const importCoas = async (req, res, next) => {
   }
 };
 
+const importUnits = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Berkas Excel (.xlsx) wajib diunggah' });
+    }
+
+    const dryRun = req.query.dry_run === 'true' || req.body.dry_run === 'true';
+    const result = await unitImportService.importMasterUnits(
+      req.file.buffer,
+      req.file.originalname,
+      dryRun,
+      req.user
+    );
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   upload,
   importItems,
   importCoas,
+  importUnits,
 };
-

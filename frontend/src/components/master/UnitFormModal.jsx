@@ -1,15 +1,20 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { X, Loader2, Save } from 'lucide-react';
+import { X, Loader2, Save, AlertTriangle } from 'lucide-react';
 import masterApi from '../../api/master.api';
 
 export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], onSuccess }) {
   const [formData, setFormData] = useState(() => ({
+    source_key: unit?.source_key || '',
     code: unit?.code || '',
     name: unit?.name || '',
     company_id: unit?.company_id || 1,
     classification: unit?.classification || 'Klinik Pratama',
     revenue_coa_id: unit?.revenue_coa_id || '',
+    revenue_coa_code: unit?.revenue_coa_code || '',
+    revenue_coa_name: unit?.revenue_coa_name || '',
+    needs_review: unit?.needs_review !== undefined ? unit.needs_review : false,
+    review_notes: unit?.review_notes || '',
     is_active: unit?.is_active !== undefined ? unit.is_active : true,
   }));
   const [loading, setLoading] = useState(false);
@@ -26,6 +31,8 @@ export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], onS
       const payload = {
         ...formData,
         company_id: Number(formData.company_id),
+        code: formData.code && formData.code.trim() ? formData.code.trim() : null,
+        source_key: formData.source_key && formData.source_key.trim() ? formData.source_key.trim() : null,
         revenue_coa_id: formData.revenue_coa_id ? Number(formData.revenue_coa_id) : null,
       };
 
@@ -46,11 +53,16 @@ export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], onS
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md my-8 overflow-hidden animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg my-8 overflow-hidden animate-in fade-in duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <h2 className="text-base font-bold text-slate-800">
-            {unit?.id ? 'Ubah Unit Kerja' : 'Tambah Unit Kerja'}
-          </h2>
+          <div>
+            <h2 className="text-base font-bold text-slate-800">
+              {unit?.id ? 'Ubah Unit Kerja' : 'Tambah Unit Kerja'}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {unit?.source_key ? `ID Draf: ${unit.source_key}` : 'Unit kerja master'}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -67,17 +79,39 @@ export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], onS
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          {formData.needs_review && (
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold block">Unit Memerlukan Review:</span>
+                {formData.review_notes || 'Kode unit belum ditentukan atau memiliki catatan draf.'}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Kode Unit</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                ID Draf (source_key)
+              </label>
               <input
                 type="text"
-                required
-                disabled={Boolean(unit?.id)}
+                value={formData.source_key}
+                onChange={(e) => setFormData({ ...formData, source_key: e.target.value })}
+                placeholder="cth. CN-001"
+                className="w-full text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                Kode Unit (Opsional)
+              </label>
+              <input
+                type="text"
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 placeholder="cth. 9901"
-                className="w-full text-xs"
+                className="w-full text-xs font-mono"
               />
             </div>
             <div>
@@ -87,14 +121,14 @@ export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], onS
                 onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
                 className="w-full text-xs"
               >
-                <option value={1}>PT Cipta Nirmala (CN)</option>
-                <option value={2}>PT Cipta Nirmala Husada (CNH)</option>
+                <option value={1}>PT CN</option>
+                <option value={2}>PT CNH</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Nama Unit</label>
+            <label className="text-xs font-semibold text-slate-600 mb-1 block">Nama Unit Kerja</label>
             <input
               type="text"
               required
@@ -105,43 +139,81 @@ export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], onS
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                Klasifikasi / Instalasi
+              </label>
+              <input
+                type="text"
+                value={formData.classification}
+                onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
+                placeholder="cth. PUSAT LABA / NON PUSAT LABA"
+                className="w-full text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">
+                COA Pendapatan
+              </label>
+              <select
+                value={formData.revenue_coa_id}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  const selectedCoa = coaList.find((c) => String(c.id) === String(selectedId));
+                  setFormData({
+                    ...formData,
+                    revenue_coa_id: selectedId,
+                    revenue_coa_code: selectedCoa ? selectedCoa.code : formData.revenue_coa_code,
+                    revenue_coa_name: selectedCoa ? selectedCoa.name : formData.revenue_coa_name,
+                  });
+                }}
+                className="w-full text-xs"
+              >
+                <option value="">-- Belum Ditentukan --</option>
+                {coaList.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} - {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Klasifikasi / Instalasi</label>
-            <input
-              type="text"
-              value={formData.classification}
-              onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
-              placeholder="cth. Rawat Inap, Kantor Pusat, Penunjang Medis"
+            <label className="text-xs font-semibold text-slate-600 mb-1 block">
+              Catatan Akuntansi / Review
+            </label>
+            <textarea
+              rows="2"
+              value={formData.review_notes}
+              onChange={(e) => setFormData({ ...formData, review_notes: e.target.value })}
+              placeholder="Catatan status unit, penggabungan, atau isu verifikasi..."
               className="w-full text-xs"
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">COA Pendapatan (Opsional)</label>
-            <select
-              value={formData.revenue_coa_id}
-              onChange={(e) => setFormData({ ...formData, revenue_coa_id: e.target.value })}
-              className="w-full text-xs"
-            >
-              <option value="">-- Belum Ditentukan --</option>
-              {coaList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} - {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="flex items-center gap-4 pt-1">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.needs_review}
+                onChange={(e) => setFormData({ ...formData, needs_review: e.target.checked })}
+                className="w-4 h-4 text-amber-600 rounded border-slate-300"
+              />
+              <span className="text-xs text-amber-900 font-medium">
+                Tandai butuh review Akuntansi
+              </span>
+            </label>
 
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="unit-active-check"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="w-4 h-4 text-primary-600 rounded border-slate-300"
-            />
-            <label htmlFor="unit-active-check" className="text-xs text-slate-700 font-medium cursor-pointer">
-              Unit aktif (dapat dipilih di pengajuan RKAP)
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="w-4 h-4 text-primary-600 rounded border-slate-300"
+              />
+              <span className="text-xs text-slate-700 font-medium">Unit aktif</span>
             </label>
           </div>
 

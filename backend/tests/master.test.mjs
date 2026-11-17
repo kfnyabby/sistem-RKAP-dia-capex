@@ -7,6 +7,7 @@ import db from '../db';
 describe('Master Data Test Suite (Fase 2)', () => {
   const dummyItemFile = path.join(__dirname, 'fixtures', 'dummy_master_barang.xlsx');
   const dummyCoaFile = path.join(__dirname, 'fixtures', 'dummy_master_coa.xlsx');
+  const dummyUnitFile = path.join(__dirname, 'fixtures', 'dummy_master_unit.xlsx');
 
   // Bersihkan data uji setelah seluruh pengujian selesai
   afterAll(async () => {
@@ -15,7 +16,9 @@ describe('Master Data Test Suite (Fase 2)', () => {
         "DELETE FROM items WHERE code IN ('101', '102', '103', '104', 'BRG-TEST-01', 'BRG-NEW')"
       );
       await db.query("DELETE FROM import_logs WHERE filename LIKE 'dummy_%'");
-      await db.query("DELETE FROM units WHERE code = '9999'");
+      await db.query(
+        "DELETE FROM units WHERE source_key LIKE 'DRAFT-%' OR code LIKE 'DU-%' OR code = '9999'"
+      );
     } catch (err) {
       console.error('Error during master test cleanup:', err.message);
     }
@@ -264,6 +267,112 @@ describe('Master Data Test Suite (Fase 2)', () => {
       expect(res.body).toHaveProperty('priorities');
       expect(res.body).toHaveProperty('item_groups');
       expect(res.body).toHaveProperty('classifications');
+    });
+  });
+
+  describe('5. Import Master Unit Draf & Penanganan Isu (Petunjuk Draf)', () => {
+    it('PIC ditolak (403) saat mencoba melakukan import master unit', async () => {
+      const pic = await loginAs('rina@ptcn.id');
+
+      const res = await request(app)
+        .post('/api/units/import')
+        .set('Cookie', pic.cookie)
+        .set('X-CSRF-Token', pic.csrfToken)
+        .attach('file', dummyUnitFile);
+
+      expect(res.status).toBe(403);
+    });
+
+    it('Mode dry_run=true membaca draf unit dan mendeteksi isu tanpa mengubah database', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const res = await request(app)
+        .post('/api/units/import?dry_run=true')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyUnitFile);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.dry_run).toBe(true);
+
+      const summary = res.body.summary;
+      expect(summary.total_read).toBe(10);
+      expect(summary.inactive_units).toBe(2); // DRAFT-CN-04 dan DRAFT-CNH-04 keputusan 'Hapus'
+      expect(summary.missing_code).toBeGreaterThan(0); // DRAFT-CN-05 tanpa kode
+      expect(summary.needs_review_count).toBeGreaterThan(0);
+
+      // Verifikasi bahwa unit draf belum tersimpan di database
+      const checkDb = await db.query(
+        "SELECT id FROM units WHERE source_key IN ('DRAFT-CN-01', 'DRAFT-CN-03', 'DRAFT-CNH-01')"
+      );
+      expect(checkDb.rows.length).toBe(0);
+    });
+
+    it('Mode dry_run=false mengeksekusi upsert unit dan menerapkan aturan Petunjuk draf', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      // 1. Eksekusi import pertama
+      const res = await request(app)
+        .post('/api/units/import')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyUnitFile);
+
+      expect(res.status).toBe(200);
+      expect(res.body.dry_run).toBe(false);
+      expect(res.body.summary.total_read).toBe(10);
+      expect(res.body.summary.new_units).toBe(10);
+
+      // 2. Verifikasi unit yang berkeputusan 'Pakai' (DRAFT-CN-01) aktif dan punya revenue_coa
+      const unit001 = await db.query("SELECT * FROM units WHERE source_key = 'DRAFT-CN-01'");
+      expect(unit001.rows.length).toBe(1);
+      expect(unit001.rows[0].code).toBe('DU-01');
+      expect(unit001.rows[0].name).toBe('LABORATORIUM DUMMY');
+      expect(unit001.rows[0].is_active).toBe(true);
+      expect(unit001.rows[0].revenue_coa_code).toBe('31211000');
+
+      // 3. Verifikasi unit yang berkeputusan 'Ubah' (DRAFT-CN-03) memakai nilai kolom final
+      const unit003 = await db.query("SELECT * FROM units WHERE source_key = 'DRAFT-CN-03'");
+      expect(unit003.rows.length).toBe(1);
+      expect(unit003.rows[0].code).toBe('DU-03B'); // Kode final
+      expect(unit003.rows[0].name).toBe('RAWAT INAP TERPADU'); // Nama final
+      expect(unit003.rows[0].classification).toBe('PUSAT LABA UTAMA'); // Klasifikasi final
+      expect(unit003.rows[0].is_active).toBe(true);
+
+      // 4. Verifikasi unit yang berkeputusan 'Hapus' (DRAFT-CN-04) dinonaktifkan
+      const unit004 = await db.query("SELECT * FROM units WHERE source_key = 'DRAFT-CN-04'");
+      expect(unit004.rows.length).toBe(1);
+      expect(unit004.rows[0].is_active).toBe(false);
+
+      // 5. Verifikasi unit tanpa kode (DRAFT-CN-05) code=null dan needs_review=true
+      const unit005 = await db.query("SELECT * FROM units WHERE source_key = 'DRAFT-CN-05'");
+      expect(unit005.rows.length).toBe(1);
+      expect(unit005.rows[0].code).toBeNull();
+      expect(unit005.rows[0].needs_review).toBe(true);
+
+      // 6. Verifikasi unit dengan keputusan 'Gabung ke unit lain' (DRAFT-CN-06) needs_review=true
+      const unit006 = await db.query("SELECT * FROM units WHERE source_key = 'DRAFT-CN-06'");
+      expect(unit006.rows.length).toBe(1);
+      expect(unit006.rows[0].needs_review).toBe(true);
+
+      // 7. Verifikasi import ulang aman & idempoten (tidak membuat duplikat)
+      const reimportRes = await request(app)
+        .post('/api/units/import')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyUnitFile);
+
+      expect(reimportRes.status).toBe(200);
+      expect(reimportRes.body.summary.matched_existing).toBe(10);
+      expect(reimportRes.body.summary.new_units).toBe(0);
+
+      // 8. Verifikasi filter needs_review pada endpoint GET /api/units
+      const filterRes = await request(app)
+        .get('/api/units?needs_review=true')
+        .set('Cookie', akt.cookie);
+      expect(filterRes.status).toBe(200);
+      expect(filterRes.body.data.every((u) => u.needs_review === true)).toBe(true);
     });
   });
 });

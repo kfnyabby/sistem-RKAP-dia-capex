@@ -13,7 +13,13 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
   if (!isOpen) return null;
 
   const isItems = type === 'items';
-  const title = isItems ? 'Import Master Barang Logistik' : 'Import Master COA & Kategori (3-Sheet)';
+  const isCoas = type === 'coas';
+  const isUnits = type === 'units';
+
+  let title = 'Import Master Data';
+  if (isItems) title = 'Import Master Barang Logistik';
+  else if (isCoas) title = 'Import Master COA & Kategori (3-Sheet)';
+  else if (isUnits) title = 'Import Draf Master Unit (Master_Unit)';
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -42,8 +48,10 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
       let res;
       if (isItems) {
         res = await masterApi.importItems(file, dryRun);
-      } else {
+      } else if (isCoas) {
         res = await masterApi.importCoas(file, dryRun);
+      } else if (isUnits) {
+        res = await masterApi.importUnits(file, dryRun);
       }
       setResult(res);
       if (!dryRun && onSuccess) {
@@ -97,16 +105,23 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
           {/* Panduan Format */}
           <div className="text-xs text-slate-600 bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 space-y-1">
             <span className="font-semibold text-amber-900 block">Panduan Format Lembar Kerja:</span>
-            {isItems ? (
+            {isItems && (
               <p>
                 Sheet: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">MASTER_BARANG</code>.
                 Kolom wajib: <code>NAMA_BARANG</code>, <code>COA_BIAYA</code>, <code>HPP</code>. Opsional: <code>ID_BARANG</code>, <code>KODE_PRODUK</code>, <code>GOLONGAN</code>, <code>SATUAN_BELI</code>, <code>STATUS</code>.
               </p>
-            ) : (
+            )}
+            {isCoas && (
               <p>
                 Wajib memiliki 3 Sheet: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">Master COA</code>,{' '}
                 <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">Kategori Biaya</code>, dan{' '}
                 <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">Kategori Investasi</code>.
+              </p>
+            )}
+            {isUnits && (
+              <p>
+                Sheet: <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900">Master_Unit</code>.
+                Kolom kunci baris: <code>ID Draf (jangan diubah)</code> (source_key). Resolusi nilai: kolom final (Q, R, S, T) dengan fallback ke nilai awal. Keputusan &quot;Hapus&quot; menonaktifkan unit, &quot;Pakai/Ubah&quot; mengaktifkan unit.
               </p>
             )}
           </div>
@@ -164,7 +179,7 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
 
               {/* Grid Metrik Ringkasan */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                {isItems ? (
+                {isItems && (
                   <>
                     <div className="p-2.5 rounded-lg bg-slate-100/70 border border-slate-200">
                       <div className="text-slate-500">Cocok Master Lama</div>
@@ -203,7 +218,9 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
                       </div>
                     </div>
                   </>
-                ) : (
+                )}
+
+                {isCoas && (
                   <>
                     <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
                       <div className="text-emerald-700">Master COA</div>
@@ -225,22 +242,64 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
                     </div>
                   </>
                 )}
+
+                {isUnits && (
+                  <>
+                    <div className="p-2.5 rounded-lg bg-slate-100/70 border border-slate-200">
+                      <div className="text-slate-500">Cocok Unit Lama</div>
+                      <div className="text-base font-bold text-slate-800 mt-0.5">
+                        {result.summary?.matched_existing || 0}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <div className="text-emerald-700">Unit Baru</div>
+                      <div className="text-base font-bold text-emerald-800 mt-0.5">
+                        {result.summary?.new_units || 0}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <div className="text-emerald-700">Unit Aktif</div>
+                      <div className="text-base font-bold text-emerald-800 mt-0.5">
+                        {result.summary?.active_units || 0}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-100/70 border border-slate-200">
+                      <div className="text-slate-500">Dinonaktifkan (&apos;Hapus&apos;)</div>
+                      <div className="text-base font-bold text-slate-800 mt-0.5">
+                        {result.summary?.inactive_units || 0}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                      <div className="text-amber-700">Perlu Review / Isu</div>
+                      <div className="text-base font-bold text-amber-800 mt-0.5">
+                        {result.summary?.needs_review_count || 0}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200">
+                      <div className="text-rose-700">Tanpa Kode Resmi</div>
+                      <div className="text-base font-bold text-rose-800 mt-0.5">
+                        {result.summary?.missing_code || 0}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Rincian Galat / Catatan Per Baris jika ada */}
               {result.errors && result.errors.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-bold text-rose-800 flex items-center gap-1">
+                  <div className="text-xs font-bold text-amber-800 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    Peringatan / Galat Validasi ({result.errors.length} baris):
+                    Peringatan / Isu Validasi ({result.errors.length} baris):
                   </div>
-                  <div className="max-h-40 overflow-y-auto rounded-lg border border-rose-200 bg-rose-50/50 p-2 text-xs space-y-1">
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-amber-200 bg-amber-50/50 p-2 text-xs space-y-1">
                     {result.errors.map((err, idx) => (
-                      <div key={idx} className="text-rose-900 border-b border-rose-100 pb-1 last:border-0">
+                      <div key={idx} className="text-amber-950 border-b border-amber-100 pb-1 last:border-0">
                         <span className="font-semibold">Baris {err.row}:</span>{' '}
+                        {err.source_key && <span className="font-mono text-purple-700">[{err.source_key}] </span>}
                         {err.code && <span className="text-slate-600">[{err.code}] </span>}
-                        {err.name && <span className="text-slate-700">&quot;{err.name}&quot; - </span>}
-                        <span>{err.error}</span>
+                        {err.name && <span className="text-slate-800 font-medium">&quot;{err.name}&quot; - </span>}
+                        <span>{err.warning || err.error}</span>
                       </div>
                     ))}
                   </div>
@@ -293,7 +352,6 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
 ImportModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  type: PropTypes.oneOf(['items', 'coas']),
+  type: PropTypes.oneOf(['items', 'coas', 'units']),
   onSuccess: PropTypes.func,
 };
-

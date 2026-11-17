@@ -109,6 +109,18 @@ export const masterApi = {
     return res.data;
   },
 
+  importUnits: async (file, dry_run = false) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('dry_run', dry_run);
+    const res = await api.post('/units/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
   // --- REFERENCE DATA ---
   getReferenceData: async () => {
     const res = await api.get('/reference-data');

@@ -45,6 +45,12 @@ router.put(
 );
 
 // --- UNITS ---
+router.post(
+  '/units/import',
+  requireRole(['akuntansi']),
+  importController.upload.single('file'),
+  importController.importUnits
+);
 router.get('/units', masterController.getUnits);
 router.post('/units', requireRole(['akuntansi']), masterController.createUnit);
 router.put('/units/:id', requireRole(['akuntansi']), masterController.updateUnit);
