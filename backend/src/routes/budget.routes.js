@@ -10,6 +10,7 @@ router.use(requireAuth);
 router.get('/budget-docs', budgetDocController.getDocs);
 router.post('/budget-docs', budgetDocController.createDoc);
 router.get('/budget-docs/:id', budgetDocController.getDocById);
+router.post('/budget-docs/:id/refresh-prices', budgetDocController.refreshDocPrices);
 
 // Baris Anggaran Biaya
 router.get('/budget-docs/:id/expense-lines', budgetDocController.getExpenseLines);

@@ -69,6 +69,10 @@ export default function EntryPage() {
   const [lastSavedTime, setLastSavedTime] = useState(formatCurrentTime());
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
 
+  // Status Perbarui Harga Master (refresh-prices)
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState('');
+
   // Antrean debounce simpan otomatis
   const debounceTimerRef = useRef(null);
   const pendingUpdatesRef = useRef(new Map());
@@ -372,6 +376,33 @@ export default function EntryPage() {
     }
   };
 
+  // Handler Perbarui Harga Master (POST /api/budget-docs/:id/refresh-prices)
+  const handleRefreshPrices = async () => {
+    if (!currentDoc?.id || refreshingPrices) return;
+    if (currentDoc.status !== 'DRAFT') {
+      alert(`Harga hanya dapat diperbarui saat dokumen berstatus DRAFT (status saat ini: ${currentDoc.status})`);
+      return;
+    }
+
+    const confirmRefresh = window.confirm(
+      'Perbarui harga pada dokumen ini dengan harga master logistik terbaru dari perusahaan? Nilai total akan dihitung ulang.'
+    );
+    if (!confirmRefresh) return;
+
+    setRefreshingPrices(true);
+    setRefreshMessage('');
+    try {
+      const res = await budgetApi.refreshDocPrices(currentDoc.id);
+      setRefreshMessage(`Berhasil memperbarui ${res.updated_lines} baris dengan harga master terbaru.`);
+      setRefreshLinesCounter((c) => c + 1);
+      setTimeout(() => setRefreshMessage(''), 4000);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal memperbarui harga master pada dokumen ini');
+    } finally {
+      setRefreshingPrices(false);
+    }
+  };
+
   // 5. Modal Tambah dari Master
   const openAddMasterModal = async () => {
     if (!currentDoc?.id) return;
@@ -547,6 +578,23 @@ export default function EntryPage() {
         </div>
       )}
 
+      {/* Banner Notifikasi Perbarui Harga Master */}
+      {refreshMessage && (
+        <div className="rounded-lg border border-[#9ACDAA] bg-[#DDF1E4] px-4 py-3 text-sm text-[#14532D] flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-[#14532D] shrink-0" />
+            <span>{refreshMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRefreshMessage('')}
+            className="p-1 text-[#14532D] hover:opacity-75 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* 3. Navigasi Sub-Tab Anggaran */}
       <div className="flex gap-2">
         <button
@@ -589,10 +637,70 @@ export default function EntryPage() {
         </div>
       ) : (
         <>
-          {/* 4. Filter Berurutan (FR-B2) */}
+          {/* 4. Filter Berurutan (FR-B2: Cari barang, Jenis COA, COA, Periode) */}
           <div className="bg-white rounded-lg border border-[#E6E0D6] p-4 shadow-2xs space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-              {/* Filter 1: Periode */}
+              {/* Filter 1: Cari Barang */}
+              <div>
+                <label className="block text-xs font-medium text-[#5E6070] mb-1">
+                  Cari barang
+                </label>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-[#5E6070] absolute left-2.5 top-3" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Nama atau kode..."
+                    className="w-full text-xs text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md pl-8 pr-3 py-2 outline-none focus:border-[#3D4E9C]"
+                  />
+                </div>
+              </div>
+
+              {/* Filter 2: Jenis COA */}
+              <div>
+                <label className="block text-xs font-medium text-[#5E6070] mb-1">
+                  Jenis COA
+                </label>
+                <select
+                  value={selectedGroupId}
+                  onChange={(e) => {
+                    setSelectedGroupId(e.target.value);
+                    setSelectedCoaId(''); // Reset COA spesifik saat jenis berubah
+                  }}
+                  className="w-full text-xs text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md px-3 py-2 outline-none focus:border-[#3D4E9C]"
+                >
+                  <option value="">Semua jenis</option>
+                  {groupList.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter 3: COA Spesifik */}
+              <div>
+                <label className="block text-xs font-medium text-[#5E6070] mb-1">
+                  COA
+                </label>
+                <select
+                  value={selectedCoaId}
+                  onChange={(e) => setSelectedCoaId(e.target.value)}
+                  className="w-full text-xs text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md px-3 py-2 outline-none focus:border-[#3D4E9C]"
+                >
+                  <option value="">Semua COA</option>
+                  {coaList
+                    .filter((c) => !selectedGroupId || String(c.group_id) === String(selectedGroupId))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} {c.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Filter 4: Periode RKAP */}
               <div>
                 <label className="block text-xs font-medium text-[#5E6070] mb-1">
                   Periode RKAP
@@ -612,8 +720,10 @@ export default function EntryPage() {
                   })}
                 </select>
               </div>
+            </div>
 
-              {/* Filter 2: Unit Kerja */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-end pt-1 border-t border-[#F0EBE2]">
+              {/* Unit Kerja (Untuk PIC/Manager/Akuntansi) */}
               <div>
                 <label className="block text-xs font-medium text-[#5E6070] mb-1">
                   Unit Kerja
@@ -635,69 +745,7 @@ export default function EntryPage() {
                 </select>
               </div>
 
-              {/* Filter 3: Cari Barang */}
-              <div>
-                <label className="block text-xs font-medium text-[#5E6070] mb-1">
-                  Cari barang
-                </label>
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-[#5E6070] absolute left-2.5 top-3" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Nama atau kode..."
-                    className="w-full text-xs text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md pl-8 pr-3 py-2 outline-none focus:border-[#3D4E9C]"
-                  />
-                </div>
-              </div>
-
-              {/* Filter 4: Jenis COA */}
-              <div>
-                <label className="block text-xs font-medium text-[#5E6070] mb-1">
-                  Jenis COA
-                </label>
-                <select
-                  value={selectedGroupId}
-                  onChange={(e) => {
-                    setSelectedGroupId(e.target.value);
-                    setSelectedCoaId(''); // Reset COA spesifik saat jenis berubah
-                  }}
-                  className="w-full text-xs text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md px-3 py-2 outline-none focus:border-[#3D4E9C]"
-                >
-                  <option value="">Semua jenis</option>
-                  {groupList.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-end pt-1 border-t border-[#F0EBE2]">
-              {/* Filter 5: COA Spesifik */}
-              <div>
-                <label className="block text-xs font-medium text-[#5E6070] mb-1">
-                  COA
-                </label>
-                <select
-                  value={selectedCoaId}
-                  onChange={(e) => setSelectedCoaId(e.target.value)}
-                  className="w-full text-xs text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md px-3 py-2 outline-none focus:border-[#3D4E9C]"
-                >
-                  <option value="">Semua COA</option>
-                  {coaList
-                    .filter((c) => !selectedGroupId || String(c.group_id) === String(selectedGroupId))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.code} {c.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {/* Filter 6: Realisasi dari bulan (Dinonaktifkan sesuai mockup/PRD) */}
+              {/* Filter Realisasi dari bulan (Dinonaktifkan sesuai mockup/PRD) */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">
                   Realisasi dari bulan (histori)
@@ -710,7 +758,7 @@ export default function EntryPage() {
                 </select>
               </div>
 
-              {/* Filter 7: s.d. bulan (Dinonaktifkan sesuai mockup/PRD) */}
+              {/* Filter s.d. bulan (Dinonaktifkan sesuai mockup/PRD) */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">
                   s.d. bulan (histori)
@@ -723,9 +771,9 @@ export default function EntryPage() {
                 </select>
               </div>
 
-              {/* Filter 8: Checkbox Hanya yang Terisi & Tombol Tambah Master */}
+              {/* Aksi & Checkbox: Hanya yang terisi, Perbarui harga, Tambah dari master */}
               <div className="flex items-center justify-between gap-2 h-9">
-                <label className="flex items-center gap-2 text-xs font-medium text-[#1F2233] cursor-pointer">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-[#1F2233] cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={onlyFilled}
@@ -735,15 +783,28 @@ export default function EntryPage() {
                   Hanya yang terisi
                 </label>
 
-                <button
-                  type="button"
-                  onClick={openAddMasterModal}
-                  disabled={!currentDoc}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-[#3D4E9C] text-white rounded-md text-xs font-semibold hover:bg-[#313f80] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Tambah dari master
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleRefreshPrices}
+                    disabled={!currentDoc || refreshingPrices || currentDoc.status !== 'DRAFT'}
+                    className="flex items-center gap-1 px-2.5 py-2 bg-white border border-[#B9B4C9] text-[#1F2233] hover:bg-slate-50 rounded-md text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    title="Perbarui harga baris dengan harga master logistik terbaru"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-[#3D4E9C] ${refreshingPrices ? 'animate-spin' : ''}`} />
+                    <span>{refreshingPrices ? '...' : 'Perbarui harga'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openAddMasterModal}
+                    disabled={!currentDoc || currentDoc.status !== 'DRAFT'}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#3D4E9C] text-white rounded-md text-xs font-semibold hover:bg-[#313f80] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Tambah dari master
+                  </button>
+                </div>
               </div>
             </div>
           </div>

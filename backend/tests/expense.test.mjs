@@ -377,6 +377,80 @@ describe('Expense Budget Test Suite (Fase 3)', () => {
       expect(docRes.status).toBe(200);
       expect(docRes.body.total_amount).toBe(6000000);
     });
+
+    it('POST /api/budget-docs/:id/refresh-prices memperbarui price_snapshot dengan harga master terbaru dan menghitung ulang jumlah', async () => {
+      const targetItem = testItemIds[0]; // TEST-EXP-001, harga master sudah 999.000
+
+      // Eksekusi refresh-prices
+      const refreshRes = await request(app)
+        .post(`/api/budget-docs/${testDocUnit1Id}/refresh-prices`)
+        .set('Cookie', picRina.cookie)
+        .set('X-CSRF-Token', picRina.csrfToken);
+
+      expect(refreshRes.status).toBe(200);
+      expect(refreshRes.body.success).toBe(true);
+      expect(refreshRes.body.updated_lines).toBe(1);
+
+      // Verifikasi price_snapshot kini berubah menjadi 999.000 dan amount menjadi 1.998.000
+      const linesRes = await request(app)
+        .get(`/api/budget-docs/${testDocUnit1Id}/expense-lines?search=${targetItem.code}`)
+        .set('Cookie', picRina.cookie);
+
+      expect(linesRes.status).toBe(200);
+      const line = linesRes.body.data[0];
+      expect(line.price).toBe(999000);
+      expect(line.amount).toBe(1998000);
+
+      // Verifikasi total dokumen baru = 6.000.000 - 20.000 + 1.998.000 = 7.978.000
+      const docRes = await request(app)
+        .get(`/api/budget-docs/${testDocUnit1Id}`)
+        .set('Cookie', picRina.cookie);
+
+      expect(docRes.status).toBe(200);
+      expect(docRes.body.total_amount).toBe(7978000);
+
+      // Verifikasi catatan audit log
+      const auditRes = await db.query(
+        "SELECT * FROM audit_logs WHERE entity = 'budget_docs' AND entity_id = $1 AND action = 'REFRESH_DOC_PRICES' ORDER BY id DESC LIMIT 1",
+        [testDocUnit1Id]
+      );
+      expect(auditRes.rows.length).toBe(1);
+
+      // Kembalikan harga master item 0 kembali ke 10.000 dan refresh kembali agar total kembali ke 6.000.000
+      await db.query(
+        'UPDATE item_prices SET price = 10000 WHERE item_id = $1 AND company_id = 1',
+        [targetItem.id]
+      );
+      await request(app)
+        .post(`/api/budget-docs/${testDocUnit1Id}/refresh-prices`)
+        .set('Cookie', picRina.cookie)
+        .set('X-CSRF-Token', picRina.csrfToken);
+    });
+
+    it('POST /api/budget-docs/:id/refresh-prices menolak jika user tidak memiliki akses unit atau dokumen bukan DRAFT', async () => {
+      // 1. PIC Rina mencoba me-refresh dokumen Unit 2 (Laboratorium) -> 403 Forbidden
+      const unauthorizedRes = await request(app)
+        .post(`/api/budget-docs/${testDocUnit2Id}/refresh-prices`)
+        .set('Cookie', picRina.cookie)
+        .set('X-CSRF-Token', picRina.csrfToken);
+
+      expect(unauthorizedRes.status).toBe(403);
+      expect(unauthorizedRes.body.message).toMatch(/akses ditolak/i);
+
+      // 2. Dokumen berstatus selain DRAFT (misal: FINAL) ditolak (403)
+      await db.query("UPDATE budget_docs SET status = 'FINAL' WHERE id = $1", [testDocUnit1Id]);
+
+      const notDraftRes = await request(app)
+        .post(`/api/budget-docs/${testDocUnit1Id}/refresh-prices`)
+        .set('Cookie', picRina.cookie)
+        .set('X-CSRF-Token', picRina.csrfToken);
+
+      expect(notDraftRes.status).toBe(403);
+      expect(notDraftRes.body.message).toMatch(/tidak dapat diubah pada status FINAL/i);
+
+      // Kembalikan status dokumen ke DRAFT
+      await db.query("UPDATE budget_docs SET status = 'DRAFT' WHERE id = $1", [testDocUnit1Id]);
+    });
   });
 
   describe('5. Optimistic Locking & Validasi Integritas', () => {

@@ -75,6 +75,18 @@ const deleteExpenseLine = async (req, res, next) => {
   }
 };
 
+const refreshDocPrices = async (req, res, next) => {
+  try {
+    const result = await expenseBudgetService.refreshDocPrices(
+      req.params.id,
+      req.user
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getDocs,
   createDoc,
@@ -82,4 +94,5 @@ module.exports = {
   getExpenseLines,
   updateExpenseLines,
   deleteExpenseLine,
+  refreshDocPrices,
 };

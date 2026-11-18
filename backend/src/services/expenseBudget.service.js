@@ -343,6 +343,107 @@ const getAvailableItemsForDoc = async (docId, params, user) => {
   );
 };
 
+const refreshDocPrices = async (docId, user) => {
+  const doc = await budgetDocRepository.findById(docId, user);
+  if (!doc) {
+    const error = new Error('Akses ditolak: Anda tidak memiliki akses ke dokumen unit ini');
+    error.status = 403;
+    throw error;
+  }
+
+  if (doc.status !== 'DRAFT') {
+    const error = new Error(`Dokumen tidak dapat diubah pada status ${doc.status}`);
+    error.status = 403;
+    throw error;
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Ambil seluruh baris biaya pada dokumen
+    const linesRes = await client.query(
+      'SELECT id, item_id, qty, price_snapshot, amount, version FROM expense_lines WHERE doc_id = $1',
+      [parseInt(docId, 10)]
+    );
+    const lines = linesRes.rows;
+
+    let updatedCount = 0;
+    const oldTotal = parseInt(doc.total_amount, 10) || 0;
+
+    if (lines.length > 0) {
+      const itemIds = lines.map((l) => l.item_id);
+
+      // Ambil harga terbaru dari item_prices untuk company_id dokumen
+      const pricesRes = await client.query(
+        'SELECT item_id, price FROM item_prices WHERE company_id = $1 AND item_id = ANY($2::int[])',
+        [doc.company_id, itemIds]
+      );
+      const priceMap = new Map();
+      pricesRes.rows.forEach((p) => priceMap.set(p.item_id, parseInt(p.price, 10)));
+
+      for (const line of lines) {
+        if (priceMap.has(line.item_id)) {
+          const latestPrice = priceMap.get(line.item_id);
+          const currentSnapshot = parseInt(line.price_snapshot, 10);
+
+          if (latestPrice !== currentSnapshot) {
+            const qty = Number(line.qty);
+            const newAmount = Math.round(latestPrice * qty);
+            const newVersion = (line.version || 1) + 1;
+
+            await client.query(
+              `UPDATE expense_lines
+               SET price_snapshot = $1,
+                   amount = $2,
+                   version = $3,
+                   updated_at = NOW()
+               WHERE id = $4`,
+              [latestPrice, newAmount, newVersion, line.id]
+            );
+            updatedCount++;
+          }
+        }
+      }
+    }
+
+    // Rekalkulasi total dokumen secara atomis
+    const updatedDoc = await budgetDocRepository.recalculateTotal(docId, client);
+    const newTotal = parseInt(updatedDoc.total_amount, 10) || 0;
+
+    await AuditService.log(
+      user.id,
+      'budget_docs',
+      parseInt(docId, 10),
+      'REFRESH_DOC_PRICES',
+      {
+        total_amount_before: oldTotal,
+      },
+      {
+        doc_id: parseInt(docId, 10),
+        updated_lines: updatedCount,
+        total_amount_after: newTotal,
+      },
+      client
+    );
+
+    await client.query('COMMIT');
+
+    return {
+      success: true,
+      message: 'Harga berhasil diperbarui dengan master terbaru',
+      doc_id: parseInt(docId, 10),
+      updated_lines: updatedCount,
+      total_amount: newTotal,
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listDocs,
   getDocDetail,
@@ -351,5 +452,6 @@ module.exports = {
   saveExpenseLines,
   deleteExpenseLine,
   getAvailableItemsForDoc,
+  refreshDocPrices,
 };
 

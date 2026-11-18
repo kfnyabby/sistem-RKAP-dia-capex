@@ -44,6 +44,11 @@ export const budgetApi = {
     return res.data;
   },
 
+  refreshDocPrices: async (docId) => {
+    const res = await api.post(`/budget-docs/${docId}/refresh-prices`);
+    return res.data;
+  },
+
   // --- KATALOG BARANG UNTUK DOKUMEN ---
   getAvailableItems: async (docId, params = {}) => {
     const res = await api.get('/items', {
