@@ -89,8 +89,8 @@ const findAll = async (params = {}) => {
     FROM items i
     LEFT JOIN coas c ON i.coa_id = c.id
     LEFT JOIN coas c_inv ON i.inventory_coa_id = c_inv.id
-    LEFT JOIN item_prices p_cn ON i.id = p_cn.item_id AND p_cn.company_id = 1 AND p_cn.period_id = 1
-    LEFT JOIN item_prices p_cnh ON i.id = p_cnh.item_id AND p_cnh.company_id = 2 AND p_cnh.period_id = 2
+    LEFT JOIN item_prices p_cn ON i.id = p_cn.item_id AND p_cn.company_id = (SELECT id FROM companies WHERE code = 'CN')
+    LEFT JOIN item_prices p_cnh ON i.id = p_cnh.item_id AND p_cnh.company_id = (SELECT id FROM companies WHERE code = 'CNH')
     ${whereClause}
     ORDER BY ${orderByCol} ${orderDir}
     LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
@@ -125,31 +125,32 @@ const findById = async (id, client = db) => {
     FROM items i
     LEFT JOIN coas c ON i.coa_id = c.id
     LEFT JOIN coas c_inv ON i.inventory_coa_id = c_inv.id
-    LEFT JOIN item_prices p_cn ON i.id = p_cn.item_id AND p_cn.company_id = 1 AND p_cn.period_id = 1
-    LEFT JOIN item_prices p_cnh ON i.id = p_cnh.item_id AND p_cnh.company_id = 2 AND p_cnh.period_id = 2
+    LEFT JOIN item_prices p_cn ON i.id = p_cn.item_id AND p_cn.company_id = (SELECT id FROM companies WHERE code = 'CN')
+    LEFT JOIN item_prices p_cnh ON i.id = p_cnh.item_id AND p_cnh.company_id = (SELECT id FROM companies WHERE code = 'CNH')
     WHERE i.id = $1
   `;
   const res = await client.query(sql, [itemId]);
   const item = res.rows[0] || null;
   if (!item) return null;
 
-  // Ambil seluruh daftar harga per perusahaan dan periode
+  // Ambil seluruh daftar harga per perusahaan (satu harga per barang per perusahaan)
   const pricesSql = `
     SELECT
       comp.code AS company_code,
-      p.year AS period_year,
-      ip.price
+      comp.name AS company_name,
+      ip.price,
+      ip.updated_at
     FROM item_prices ip
     JOIN companies comp ON ip.company_id = comp.id
-    JOIN periods p ON ip.period_id = p.id
     WHERE ip.item_id = $1
-    ORDER BY comp.code ASC, p.year ASC
+    ORDER BY comp.code ASC
   `;
   const pricesRes = await client.query(pricesSql, [itemId]);
   item.prices = pricesRes.rows.map((row) => ({
     company_code: row.company_code,
-    period_year: row.period_year,
+    company_name: row.company_name,
     price: parseInt(row.price, 10),
+    updated_at: row.updated_at,
   }));
 
   return item;
@@ -218,16 +219,57 @@ const upsertItem = async (data, client = db) => {
   return res.rows[0];
 };
 
-const upsertPrice = async (itemId, companyId, periodId, price, client = db) => {
+const upsertPrice = async (itemId, companyId, price, userId = null, client = db) => {
   const sql = `
-    INSERT INTO item_prices (item_id, company_id, period_id, price)
-    VALUES ($1, $2, $3, $4)
-    ON CONFLICT (item_id, company_id, period_id)
-    DO UPDATE SET price = EXCLUDED.price
+    INSERT INTO item_prices (item_id, company_id, price, updated_at, updated_by)
+    VALUES ($1, $2, $3, NOW(), $4)
+    ON CONFLICT (item_id, company_id)
+    DO UPDATE SET price = EXCLUDED.price, updated_at = NOW(), updated_by = EXCLUDED.updated_by
     RETURNING *
   `;
-  const res = await client.query(sql, [itemId, companyId, periodId, price]);
+  const res = await client.query(sql, [itemId, companyId, price, userId]);
   return res.rows[0];
+};
+
+const recordPriceHistory = async (
+  itemId,
+  companyId,
+  oldPrice,
+  newPrice,
+  source = 'manual',
+  userId = null,
+  client = db
+) => {
+  const sql = `
+    INSERT INTO item_price_history (item_id, company_id, old_price, new_price, source, created_by, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    RETURNING *
+  `;
+  const res = await client.query(sql, [itemId, companyId, oldPrice, newPrice, source, userId]);
+  return res.rows[0];
+};
+
+const getPriceHistory = async (itemId, companyId = null, client = db) => {
+  const conditions = ['iph.item_id = $1'];
+  const params = [parseInt(itemId, 10)];
+  if (companyId) {
+    conditions.push('iph.company_id = $2');
+    params.push(parseInt(companyId, 10));
+  }
+  const sql = `
+    SELECT
+      iph.*,
+      comp.code AS company_code,
+      comp.name AS company_name,
+      u.name AS user_name
+    FROM item_price_history iph
+    JOIN companies comp ON iph.company_id = comp.id
+    LEFT JOIN users u ON iph.created_by = u.id
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY iph.created_at DESC
+  `;
+  const res = await client.query(sql, params);
+  return res.rows;
 };
 
 const updateStatus = async (id, isActive, client = db) => {
@@ -249,64 +291,58 @@ const getQualityMetrics = async (client = db) => {
   const metricsRes = await client.query(metricsSql);
   const row = metricsRes.rows[0];
 
-  // Hitung barang dengan HPP 0 pada CN
-  const hppZeroSql = `
-    SELECT COUNT(*) AS count
-    FROM item_prices
-    WHERE company_id = 1 AND price = 0
+  // Hitungan barang tanpa harga dan harga nol per perusahaan (FR-M8, FR-M11 & Fase 2b)
+  const priceMetricsSql = `
+    SELECT
+      comp.id AS company_id,
+      comp.code AS company_code,
+      comp.name AS company_name,
+      COUNT(i.id) FILTER (WHERE ip.id IS NULL)::int AS items_without_price,
+      COUNT(i.id) FILTER (WHERE ip.id IS NOT NULL AND ip.price = 0)::int AS items_zero_price
+    FROM companies comp
+    CROSS JOIN items i
+    LEFT JOIN item_prices ip ON ip.item_id = i.id AND ip.company_id = comp.id
+    WHERE i.is_active = TRUE
+    GROUP BY comp.id, comp.code, comp.name
+    ORDER BY comp.code ASC
   `;
-  const hppZeroRes = await client.query(hppZeroSql);
+  const priceMetricsRes = await client.query(priceMetricsSql);
+
+  const cnMetrics = priceMetricsRes.rows.find((p) => p.company_code === 'CN');
+  const hppZeroCount = cnMetrics ? cnMetrics.items_zero_price : 0;
 
   // Hitung selisih harga CN vs CNH
   const diffPricesSql = `
     SELECT COUNT(*) AS count
     FROM item_prices p1
-    JOIN item_prices p2 ON p1.item_id = p2.item_id AND p2.company_id = 2
-    WHERE p1.company_id = 1 AND p1.price != p2.price
+    JOIN item_prices p2 ON p1.item_id = p2.item_id
+    WHERE p1.company_id = (SELECT id FROM companies WHERE code = 'CN')
+      AND p2.company_id = (SELECT id FROM companies WHERE code = 'CNH')
+      AND p1.price != p2.price
   `;
   const diffPricesRes = await client.query(diffPricesSql);
-
-  // Hitungan barang tanpa harga per perusahaan dan periode (FR-M8 & Fase 2b)
-  const noPricesByPeriodSql = `
-    SELECT
-      comp.code AS company_code,
-      comp.name AS company_name,
-      p.year AS period_year,
-      p.id AS period_id,
-      COUNT(i.id)::int AS items_without_price
-    FROM companies comp
-    JOIN periods p ON p.company_id = comp.id
-    CROSS JOIN items i
-    WHERE i.is_active = TRUE
-      AND NOT EXISTS (
-        SELECT 1 FROM item_prices ip
-        WHERE ip.item_id = i.id
-          AND ip.company_id = comp.id
-          AND ip.period_id = p.id
-          AND ip.price > 0
-      )
-    GROUP BY comp.id, comp.code, comp.name, p.id, p.year
-    ORDER BY comp.code ASC, p.year ASC
-  `;
-  const noPricesRes = await client.query(noPricesByPeriodSql);
 
   return {
     total_items: parseInt(row.total_items, 10),
     items_without_coa: parseInt(row.items_without_coa, 10),
     inactive_items: parseInt(row.inactive_items, 10),
-    hpp_zero_count: parseInt(hppZeroRes.rows[0].count, 10),
+    hpp_zero_count: hppZeroCount,
     diff_prices_cn_cnh: parseInt(diffPricesRes.rows[0].count, 10),
-    items_without_price_by_period: noPricesRes.rows.map((r) => ({
+    items_price_metrics: priceMetricsRes.rows.map((r) => ({
+      company_id: r.company_id,
       company_code: r.company_code,
       company_name: r.company_name,
-      period_year: r.period_year,
-      period_id: r.period_id,
       items_without_price: parseInt(r.items_without_price, 10),
+      items_zero_price: parseInt(r.items_zero_price, 10),
     })),
   };
 };
 
-const getAvailableForDoc = async (docId, companyId, periodId, params = {}) => {
+const getAvailableForDoc = async (docId, companyId, periodIdOrParams = {}, maybeParams = {}) => {
+  const params =
+    typeof periodIdOrParams === 'object' && periodIdOrParams !== null
+      ? periodIdOrParams
+      : maybeParams;
   const { q, group_id, coa_id, page = 1, per_page = 25 } = params;
 
   const conditions = [
@@ -369,15 +405,13 @@ const getAvailableForDoc = async (docId, companyId, periodId, params = {}) => {
     JOIN coas c ON c.id = i.coa_id
     LEFT JOIN coa_groups cg ON cg.id = c.group_id
     LEFT JOIN item_prices ip ON ip.item_id = i.id 
-      AND ip.company_id = $${paramIdx} 
-      AND ip.period_id = $${paramIdx + 1}
+      AND ip.company_id = $${paramIdx}
     ${whereClause}
     ORDER BY c.code ASC, i.name ASC
-    LIMIT $${paramIdx + 2} OFFSET $${paramIdx + 3}
+    LIMIT $${paramIdx + 1} OFFSET $${paramIdx + 2}
   `;
   queryParams.push(
     parseInt(companyId, 10),
-    parseInt(periodId, 10),
     parsedPerPage,
     offset
   );
@@ -403,6 +437,8 @@ module.exports = {
   findByCode,
   upsertItem,
   upsertPrice,
+  recordPriceHistory,
+  getPriceHistory,
   updateStatus,
   getQualityMetrics,
   getAvailableForDoc,

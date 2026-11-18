@@ -57,6 +57,16 @@ const updateItemStatus = async (req, res, next) => {
   }
 };
 
+const updateItemPrices = async (req, res, next) => {
+  try {
+    const { prices } = req.body;
+    const item = await masterDataService.updateItemPrices(req.params.id, prices, req.user.id);
+    res.json({ message: 'Harga barang berhasil diperbarui', data: item });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Quality Report
 const getQualityReport = async (req, res, next) => {
   try {
@@ -179,6 +189,7 @@ module.exports = {
   getItemDetail,
   createItem,
   updateItem,
+  updateItemPrices,
   updateItemStatus,
   getQualityReport,
   getCoas,

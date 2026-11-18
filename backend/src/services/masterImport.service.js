@@ -17,7 +17,7 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
     dry_run = true,
     actorId = null,
     company_code = 'CN',
-    period_year = 2027,
+    update_prices = false,
   } = options;
 
   const workbook = new ExcelJS.Workbook();
@@ -29,7 +29,7 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
     throw err;
   }
 
-  // Validasi Perusahaan
+  // Validasi Perusahaan (ID dicari dari tabel companies)
   const companyRes = await db.query(
     'SELECT id, code, name FROM companies WHERE UPPER(code) = UPPER($1)',
     [String(company_code).trim()]
@@ -40,20 +40,6 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
     throw err;
   }
   const company = companyRes.rows[0];
-
-  // Validasi Periode
-  const periodRes = await db.query(
-    'SELECT id, company_id, year FROM periods WHERE company_id = $1 AND year = $2',
-    [company.id, parseInt(period_year, 10)]
-  );
-  if (periodRes.rows.length === 0) {
-    const err = new Error(
-      `Periode untuk perusahaan ${company.code} tahun ${period_year} belum terdaftar`
-    );
-    err.status = 422;
-    throw err;
-  }
-  const period = periodRes.rows[0];
 
   // Cari worksheet MASTER_BARANG atau worksheet pertama
   let sheet = workbook.worksheets.find((ws) =>
@@ -110,6 +96,16 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
     existingNameMap.set(String(item.name).trim().toLowerCase(), item);
   });
 
+  // Siapkan map harga barang eksisting untuk perusahaan terkait
+  const existingPricesRes = await db.query(
+    'SELECT item_id, price FROM item_prices WHERE company_id = $1',
+    [company.id]
+  );
+  const existingPriceMap = new Map();
+  existingPricesRes.rows.forEach((p) => {
+    existingPriceMap.set(p.item_id, Number(p.price));
+  });
+
   let totalRead = 0;
   let matchedExisting = 0;
   let newItems = 0;
@@ -117,6 +113,7 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
   let hppZero = 0;
   let missingCoa = 0;
   let unknownCoa = 0;
+  let pricesToUpdate = 0;
 
   const rowErrors = [];
   const parsedRows = [];
@@ -190,10 +187,25 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
 
     // Cek apakah barang cocok dengan master lama
     const existing = existingCodeMap.get(itemCode) || existingNameMap.get(nameVal.toLowerCase());
+    let isNew = !existing;
+    let oldPrice = null;
+    let willPriceChange = false;
+
     if (existing) {
       matchedExisting++;
       if (coaId && existing.coa_id && existing.coa_id !== coaId) {
         coaChanged++;
+      }
+      if (existingPriceMap.has(existing.id)) {
+        oldPrice = existingPriceMap.get(existing.id);
+        if (oldPrice !== hppNum) {
+          willPriceChange = true;
+          pricesToUpdate++;
+        }
+      } else if (hppNum > 0) {
+        // Barang lama tapi belum pernah punya harga di perusahaan ini
+        willPriceChange = true;
+        pricesToUpdate++;
       }
     } else {
       newItems++;
@@ -214,6 +226,9 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
       inventory_coa_id: invCoaId,
       coa_category: rawKatCoa || null,
       raw_coa_code: rawCoaBiaya,
+      is_new: isNew,
+      old_price: oldPrice,
+      will_price_change: willPriceChange,
     };
 
     parsedRows.push(itemRecord);
@@ -227,6 +242,7 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
     hpp_zero: hppZero,
     missing_coa: missingCoa,
     unknown_coa: unknownCoa,
+    prices_to_update: pricesToUpdate,
   };
 
   // Jika BUKAN dry run, eksekusi penyimpanan transaksi ke database
@@ -251,8 +267,32 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
           client
         );
 
-        // Update harga HANYA untuk perusahaan dan periode yang dipilih (JANGAN menulis harga CNH)
-        await itemRepository.upsertPrice(savedItem.id, company.id, period.id, row.price, client);
+        // Update harga:
+        // 1. Barang baru: SELALU simpan harga dan catat history (old_price = 0)
+        if (row.is_new) {
+          await itemRepository.upsertPrice(savedItem.id, company.id, row.price, actorId, client);
+          await itemRepository.recordPriceHistory(
+            savedItem.id,
+            company.id,
+            0,
+            row.price,
+            'import',
+            actorId,
+            client
+          );
+        } else if (update_prices && row.will_price_change) {
+          // 2. Barang lama: hanya simpan jika update_prices = true dan harga berubah
+          await itemRepository.upsertPrice(savedItem.id, company.id, row.price, actorId, client);
+          await itemRepository.recordPriceHistory(
+            savedItem.id,
+            company.id,
+            row.old_price ?? 0,
+            row.price,
+            'import',
+            actorId,
+            client
+          );
+        }
       }
 
       // Catat ke log import

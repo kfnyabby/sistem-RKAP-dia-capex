@@ -27,6 +27,11 @@ export const masterApi = {
     return res.data;
   },
 
+  updateItemPrices: async (id, prices) => {
+    const res = await api.patch(`/items/${id}/prices`, { prices });
+    return res.data;
+  },
+
   getQualityReport: async () => {
     const res = await api.get('/items/quality-report');
     return res.data;
@@ -37,7 +42,7 @@ export const masterApi = {
     formData.append('file', file);
     formData.append('dry_run', dry_run);
     if (options.company_code) formData.append('company_code', options.company_code);
-    if (options.period_year) formData.append('period_year', options.period_year);
+    if (options.update_prices !== undefined) formData.append('update_prices', options.update_prices);
     const res = await api.post('/items/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

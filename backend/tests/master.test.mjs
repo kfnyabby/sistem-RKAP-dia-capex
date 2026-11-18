@@ -118,9 +118,9 @@ describe('Master Data Test Suite (Fase 2)', () => {
       expect(res.body).toHaveProperty('live_metrics');
       expect(res.body).toHaveProperty('price_warning');
       expect(res.body.live_metrics.total_items).toBeGreaterThan(0);
-      expect(res.body.live_metrics).toHaveProperty('items_without_price_by_period');
-      expect(Array.isArray(res.body.live_metrics.items_without_price_by_period)).toBe(true);
-      expect(res.body.live_metrics.items_without_price_by_period.length).toBeGreaterThan(0);
+      expect(res.body.live_metrics).toHaveProperty('items_price_metrics');
+      expect(Array.isArray(res.body.live_metrics.items_price_metrics)).toBe(true);
+      expect(res.body.live_metrics.items_price_metrics.length).toBe(2);
     });
   });
 
@@ -150,11 +150,11 @@ describe('Master Data Test Suite (Fase 2)', () => {
       expect(checkDb.rows.length).toBe(0);
     });
 
-    it('Mode dry_run=false hanya menulis HPP untuk perusahaan terpilih (CN) dan TIDAK menulis harga CNH', async () => {
+    it('Mode dry_run=false hanya menulis HPP untuk perusahaan terpilih (CN) dan TIDAK menulis harga CNH, serta mencatat ke item_price_history', async () => {
       const akt = await loginAs('dya@ptcn.id');
 
       const res = await request(app)
-        .post('/api/items/import?dry_run=false&company_code=CN&period_year=2027')
+        .post('/api/items/import?dry_run=false&company_code=CN')
         .set('Cookie', akt.cookie)
         .set('X-CSRF-Token', akt.csrfToken)
         .attach('file', dummyItemFile);
@@ -184,6 +184,15 @@ describe('Master Data Test Suite (Fase 2)', () => {
       );
       expect(priceCnh.rows.length).toBe(0);
 
+      // Verifikasi item_price_history mencatat transaksi import
+      const historyRes = await db.query(
+        'SELECT * FROM item_price_history WHERE item_id = $1 AND company_id = 1',
+        [itemId]
+      );
+      expect(historyRes.rows.length).toBe(1);
+      expect(Number(historyRes.rows[0].new_price)).toBe(45000);
+      expect(historyRes.rows[0].source).toBe('import');
+
       // Verifikasi tabel import_logs mencatat transaksi
       const logDb = await db.query(
         "SELECT * FROM import_logs WHERE filename LIKE '%dummy_master_barang%' ORDER BY id DESC LIMIT 1"
@@ -192,17 +201,65 @@ describe('Master Data Test Suite (Fase 2)', () => {
       expect(logDb.rows[0].total_read).toBe(6);
     });
 
-    it('Import barang menolak dengan status 422 bila tahun periode belum terdaftar di database', async () => {
+    it('Import ulang barang lama: update_prices=false mempertahankan harga, update_prices=true memperbarui harga', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      // 1. Ubah harga barang 101 secara manual di database menjadi 40.000
+      const itemRes = await db.query("SELECT id FROM items WHERE code = '101'");
+      const itemId = itemRes.rows[0].id;
+      await db.query('UPDATE item_prices SET price = 40000 WHERE item_id = $1 AND company_id = 1', [itemId]);
+
+      // 2. Import dry_run mendeteksi harga yang akan berubah (prices_to_update)
+      const dryRes = await request(app)
+        .post('/api/items/import?dry_run=true&company_code=CN')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyItemFile);
+      expect(dryRes.status).toBe(200);
+      expect(dryRes.body.summary.prices_to_update).toBeGreaterThanOrEqual(1);
+
+      // 3. Import dengan update_prices=false TIDAK mengubah harga barang lama
+      const noUpdateRes = await request(app)
+        .post('/api/items/import?dry_run=false&company_code=CN&update_prices=false')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyItemFile);
+      expect(noUpdateRes.status).toBe(200);
+
+      const checkNoUpdate = await db.query('SELECT price FROM item_prices WHERE item_id = $1 AND company_id = 1', [itemId]);
+      expect(Number(checkNoUpdate.rows[0].price)).toBe(40000);
+
+      // 4. Import dengan update_prices=true MENGUBAH harga menjadi nilai di Excel (45.000) dan mencatat history
+      const withUpdateRes = await request(app)
+        .post('/api/items/import?dry_run=false&company_code=CN&update_prices=true')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyItemFile);
+      expect(withUpdateRes.status).toBe(200);
+
+      const checkWithUpdate = await db.query('SELECT price FROM item_prices WHERE item_id = $1 AND company_id = 1', [itemId]);
+      expect(Number(checkWithUpdate.rows[0].price)).toBe(45000);
+
+      const latestHistory = await db.query(
+        'SELECT * FROM item_price_history WHERE item_id = $1 AND company_id = 1 ORDER BY id DESC LIMIT 1',
+        [itemId]
+      );
+      expect(Number(latestHistory.rows[0].old_price)).toBe(40000);
+      expect(Number(latestHistory.rows[0].new_price)).toBe(45000);
+      expect(latestHistory.rows[0].source).toBe('import');
+    });
+
+    it('Import barang menolak dengan status 422 bila kode perusahaan tidak terdaftar di database', async () => {
       const akt = await loginAs('dya@ptcn.id');
 
       const res = await request(app)
-        .post('/api/items/import?company_code=CN&period_year=2099')
+        .post('/api/items/import?company_code=INVALID_COMPANY')
         .set('Cookie', akt.cookie)
         .set('X-CSRF-Token', akt.csrfToken)
         .attach('file', dummyItemFile);
 
       expect(res.status).toBe(422);
-      expect(res.body.message).toMatch(/periode.*2099.*belum terdaftar/i);
+      expect(res.body.message).toMatch(/perusahaan.*tidak ditemukan/i);
     });
   });
 
@@ -225,10 +282,10 @@ describe('Master Data Test Suite (Fase 2)', () => {
   });
 
   describe('5. CRUD Master Data & Pengaturan', () => {
-    it('Akuntansi dapat menambah dan memperbarui barang', async () => {
+    it('Akuntansi dapat menambah dan memperbarui barang dengan format prices tanpa periode', async () => {
       const akt = await loginAs('dya@ptcn.id');
 
-      // 1. Tambah barang dengan format daftar prices: [{ company_code, period_year, price }]
+      // 1. Tambah barang dengan format daftar prices: [{ company_code, price }]
       const createRes = await request(app)
         .post('/api/items')
         .set('Cookie', akt.cookie)
@@ -238,13 +295,13 @@ describe('Master Data Test Suite (Fase 2)', () => {
           name: 'Barang Master Baru',
           uom: 'Kotak',
           group_name: 'Bahan Medis',
-          prices: [{ company_code: 'CN', period_year: 2027, price: 50000 }],
+          prices: [{ company_code: 'CN', price: 50000 }],
         });
 
       expect(createRes.status).toBe(201);
       const itemId = createRes.body.data.id;
 
-      // Verifikasi pembacaan detail barang mengembalikan daftar prices
+      // Verifikasi pembacaan detail barang mengembalikan daftar prices tanpa periode
       const detailRes = await request(app).get(`/api/items/${itemId}`).set('Cookie', akt.cookie);
       expect(detailRes.status).toBe(200);
       expect(Array.isArray(detailRes.body.prices)).toBe(true);
@@ -258,7 +315,7 @@ describe('Master Data Test Suite (Fase 2)', () => {
         .set('X-CSRF-Token', akt.csrfToken)
         .send({
           name: 'Barang Master Baru Diperbarui',
-          prices: [{ company_code: 'CN', period_year: 2027, price: 75000 }],
+          prices: [{ company_code: 'CN', price: 75000 }],
         });
       expect(updateRes.status).toBe(200);
       expect(updateRes.body.data.prices[0].price).toBe(75000);
@@ -272,6 +329,64 @@ describe('Master Data Test Suite (Fase 2)', () => {
 
       expect(patchRes.status).toBe(200);
       expect(patchRes.body.data.is_active).toBe(false);
+    });
+
+    it('PATCH /api/items/:id/prices khusus Akuntansi, mencatat riwayat ke item_price_history dan audit_logs', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+      const pic = await loginAs('rina@ptcn.id');
+
+      const itemRes = await db.query("SELECT id FROM items WHERE code = '101'");
+      const itemId = itemRes.rows[0].id;
+
+      // 1. PIC ditolak (403)
+      const picPatch = await request(app)
+        .patch(`/api/items/${itemId}/prices`)
+        .set('Cookie', pic.cookie)
+        .set('X-CSRF-Token', pic.csrfToken)
+        .send({ prices: [{ company_code: 'CN', price: 60000 }] });
+      expect(picPatch.status).toBe(403);
+
+      // 2. Akuntansi berhasil memperbarui harga
+      const aktPatch = await request(app)
+        .patch(`/api/items/${itemId}/prices`)
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .send({ prices: [{ company_code: 'CN', price: 60000 }] });
+      expect(aktPatch.status).toBe(200);
+
+      // Verifikasi item_price_history mencatat source: 'manual'
+      const historyRes = await db.query(
+        "SELECT * FROM item_price_history WHERE item_id = $1 AND company_id = 1 AND source = 'manual' ORDER BY id DESC LIMIT 1",
+        [itemId]
+      );
+      expect(historyRes.rows.length).toBe(1);
+      expect(Number(historyRes.rows[0].new_price)).toBe(60000);
+
+      // Verifikasi audit_logs mencatat aksi update_item_prices
+      const auditRes = await db.query(
+        "SELECT * FROM audit_logs WHERE entity = 'items' AND entity_id = $1 AND action = 'update_item_prices' ORDER BY id DESC LIMIT 1",
+        [itemId]
+      );
+      expect(auditRes.rows.length).toBe(1);
+    });
+
+    it('Laporan kualitas GET /api/items/quality-report menghitung barang tanpa harga dan harga nol per perusahaan', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const res = await request(app)
+        .get('/api/items/quality-report')
+        .set('Cookie', akt.cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('live_metrics');
+      expect(res.body.live_metrics).toHaveProperty('items_price_metrics');
+      expect(Array.isArray(res.body.live_metrics.items_price_metrics)).toBe(true);
+      expect(res.body.live_metrics.items_price_metrics.length).toBe(2);
+
+      const cnMetric = res.body.live_metrics.items_price_metrics.find((p) => p.company_code === 'CN');
+      expect(cnMetric).toBeDefined();
+      expect(cnMetric).toHaveProperty('items_without_price');
+      expect(cnMetric).toHaveProperty('items_zero_price');
     });
 
     it('Akuntansi dapat memperbarui masa manfaat dan COA susut pada Kategori Investasi', async () => {

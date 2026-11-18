@@ -80,10 +80,10 @@ describe('Expense Budget Test Suite (Fase 3)', () => {
 
       // Masukkan harga master di item_prices
       await db.query(
-        `INSERT INTO item_prices (item_id, company_id, period_id, price)
-         VALUES ($1, 1, $2, $3)
-         ON CONFLICT (item_id, company_id, period_id) DO UPDATE SET price = EXCLUDED.price`,
-        [itemId, testPeriodId, i <= 50 ? 10000 : 25000]
+        `INSERT INTO item_prices (item_id, company_id, price)
+         VALUES ($1, 1, $2)
+         ON CONFLICT (item_id, company_id) DO UPDATE SET price = EXCLUDED.price`,
+        [itemId, i <= 50 ? 10000 : 25000]
       );
     }
 
@@ -99,8 +99,8 @@ describe('Expense Budget Test Suite (Fase 3)', () => {
 
     // Pastikan tidak ada harga aktif > 0 untuk item ini
     await db.query(
-      'DELETE FROM item_prices WHERE item_id = $1 AND company_id = 1 AND period_id = $2',
-      [noPriceItemId, testPeriodId]
+      'DELETE FROM item_prices WHERE item_id = $1 AND company_id = 1',
+      [noPriceItemId]
     );
 
     // Login users
@@ -352,8 +352,8 @@ describe('Expense Budget Test Suite (Fase 3)', () => {
 
       // Ubah harga master menjadi Rp 999.000 di item_prices
       await db.query(
-        'UPDATE item_prices SET price = 999000 WHERE item_id = $1 AND company_id = 1 AND period_id = $2',
-        [targetItem.id, testPeriodId]
+        'UPDATE item_prices SET price = 999000 WHERE item_id = $1 AND company_id = 1',
+        [targetItem.id]
       );
 
       // Baca baris biaya di dokumen via API

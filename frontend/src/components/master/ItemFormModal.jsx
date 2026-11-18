@@ -35,8 +35,8 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], onS
       const payload = {
         ...formData,
         prices: [
-          { company_code: 'CN', period_year: 2027, price: Number(formData.price_cn) || 0 },
-          { company_code: 'CNH', period_year: 2027, price: Number(formData.price_cnh) || 0 },
+          { company_code: 'CN', price: Number(formData.price_cn) || 0 },
+          { company_code: 'CNH', price: Number(formData.price_cnh) || 0 },
         ],
         coa_id: formData.coa_id ? Number(formData.coa_id) : null,
         inventory_coa_id: formData.inventory_coa_id ? Number(formData.inventory_coa_id) : null,

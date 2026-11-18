@@ -263,25 +263,30 @@ export default function MasterDataView() {
             </div>
           )}
 
-          {/* Rekapitulasi Barang Tanpa Harga per Perusahaan & Periode */}
-          {qualityReport?.live_metrics?.items_without_price_by_period &&
-            qualityReport.live_metrics.items_without_price_by_period.length > 0 && (
+          {/* Rekapitulasi Barang Tanpa Harga per Perusahaan */}
+          {qualityReport?.live_metrics?.items_price_metrics &&
+            qualityReport.live_metrics.items_price_metrics.length > 0 && (
               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-2">
                 <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Barang Aktif Tanpa Harga Master
+                  Status Harga Master Barang per Perusahaan
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {qualityReport.live_metrics.items_without_price_by_period.map((m) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {qualityReport.live_metrics.items_price_metrics.map((m) => (
                     <div
-                      key={`${m.company_code}_${m.period_year}`}
-                      className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 flex items-center justify-between text-xs"
+                      key={m.company_code}
+                      className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 flex items-center justify-between text-xs"
                     >
                       <div>
-                        <span className="font-bold text-amber-900">{m.company_code}</span> · Tahun {m.period_year}
+                        <span className="font-bold text-amber-900">{m.company_name} ({m.company_code})</span>
+                        <div className="text-[11px] text-amber-800 mt-0.5">
+                          Harga Rp 0: <b>{m.items_zero_price}</b> barang
+                        </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full font-bold bg-amber-200 text-amber-900">
-                        {m.items_without_price} barang
-                      </span>
+                      <div className="text-right">
+                        <span className="px-2.5 py-1 rounded-full font-bold bg-amber-200 text-amber-900 text-xs inline-block">
+                          {m.items_without_price} tanpa harga
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

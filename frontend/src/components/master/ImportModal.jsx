@@ -7,7 +7,7 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
   const [file, setFile] = useState(null);
   const [dryRun, setDryRun] = useState(true);
   const [companyCode, setCompanyCode] = useState('CN');
-  const [periodYear, setPeriodYear] = useState(2027);
+  const [updatePrices, setUpdatePrices] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [result, setResult] = useState(null);
@@ -51,7 +51,7 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
       if (isItems) {
         res = await masterApi.importItems(file, dryRun, {
           company_code: companyCode,
-          period_year: periodYear,
+          update_prices: updatePrices,
         });
       } else if (isCoas) {
         res = await masterApi.importCoas(file, dryRun);
@@ -146,17 +146,19 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">HPP hanya akan disimpan untuk perusahaan terpilih.</p>
               </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Tahun Periode</label>
-                <input
-                  type="number"
-                  value={periodYear}
-                  onChange={(e) => setPeriodYear(Number(e.target.value))}
-                  min="2020"
-                  max="2035"
-                  className="w-full text-xs rounded border-slate-300 bg-white py-1.5 px-2"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">Periode harus sudah terdaftar di sistem.</p>
+              <div className="flex flex-col justify-center">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer pt-2">
+                  <input
+                    type="checkbox"
+                    checked={updatePrices}
+                    onChange={(e) => setUpdatePrices(e.target.checked)}
+                    className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
+                  />
+                  <span>Perbarui harga barang lama</span>
+                </label>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Bila dicentang, harga barang lama yang berubah akan diperbarui di database.
+                </p>
               </div>
             </div>
           )}
@@ -226,6 +228,12 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
                       <div className="text-emerald-700">Barang Baru</div>
                       <div className="text-base font-bold text-emerald-800 mt-0.5">
                         {result.summary?.new_items || 0}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200">
+                      <div className="text-blue-700">Harga Berubah</div>
+                      <div className="text-base font-bold text-blue-800 mt-0.5">
+                        {result.summary?.prices_to_update || 0}
                       </div>
                     </div>
                     <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">

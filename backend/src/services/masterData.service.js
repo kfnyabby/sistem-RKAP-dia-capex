@@ -29,53 +29,51 @@ const createItem = async (data, actorId) => {
     throw error;
   }
 
-  const newItem = await itemRepository.upsertItem(data);
+  let createdId;
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  if (Array.isArray(data.prices) && data.prices.length > 0) {
-    for (const p of data.prices) {
-      const compRes = await db.query(
-        'SELECT id, code FROM companies WHERE UPPER(code) = UPPER($1)',
-        [String(p.company_code).trim()]
-      );
-      if (compRes.rows.length === 0) {
-        const error = new Error(`Perusahaan '${p.company_code}' tidak terdaftar`);
-        error.status = 422;
-        throw error;
-      }
-      const company = compRes.rows[0];
+    const newItem = await itemRepository.upsertItem(data, client);
+    createdId = newItem.id;
 
-      const periodRes = await db.query(
-        'SELECT id FROM periods WHERE company_id = $1 AND year = $2',
-        [company.id, parseInt(p.period_year, 10)]
-      );
-      if (periodRes.rows.length === 0) {
-        const error = new Error(
-          `Periode untuk perusahaan ${company.code} tahun ${p.period_year} belum terdaftar`
+    if (Array.isArray(data.prices) && data.prices.length > 0) {
+      for (const p of data.prices) {
+        const compRes = await client.query(
+          'SELECT id, code FROM companies WHERE UPPER(code) = UPPER($1)',
+          [String(p.company_code).trim()]
         );
-        error.status = 422;
-        throw error;
-      }
-      const period = periodRes.rows[0];
+        if (compRes.rows.length === 0) {
+          const error = new Error(`Perusahaan '${p.company_code}' tidak terdaftar`);
+          error.status = 422;
+          throw error;
+        }
+        const company = compRes.rows[0];
+        const newPrice = Math.round(Number(p.price) || 0);
 
-      await itemRepository.upsertPrice(
-        newItem.id,
-        company.id,
-        period.id,
-        Math.round(Number(p.price) || 0)
-      );
+        await itemRepository.upsertPrice(newItem.id, company.id, newPrice, actorId, client);
+        await itemRepository.recordPriceHistory(
+          newItem.id,
+          company.id,
+          0,
+          newPrice,
+          'manual',
+          actorId,
+          client
+        );
+      }
     }
-  } else {
-    if (data.price !== undefined || data.price_cn !== undefined) {
-      const pVal = data.price !== undefined ? data.price : data.price_cn;
-      await itemRepository.upsertPrice(newItem.id, 1, 1, Math.round(Number(pVal) || 0));
-    }
-    if (data.price_cnh !== undefined) {
-      await itemRepository.upsertPrice(newItem.id, 2, 2, Math.round(Number(data.price_cnh) || 0));
-    }
+
+    await auditService.log(actorId, 'items', newItem.id, 'create_item', null, data, client);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 
-  await auditService.log(actorId, 'items', newItem.id, 'create_item', null, data);
-  return await itemRepository.findById(newItem.id);
+  return await itemRepository.findById(createdId);
 };
 
 const updateItem = async (id, data, actorId) => {
@@ -86,56 +84,127 @@ const updateItem = async (id, data, actorId) => {
     throw error;
   }
 
-  const updated = await itemRepository.upsertItem({
-    ...existing,
-    ...data,
-    code: existing.code, // Kode tidak diubah
-  });
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  if (Array.isArray(data.prices) && data.prices.length > 0) {
-    for (const p of data.prices) {
-      const compRes = await db.query(
+    const updated = await itemRepository.upsertItem(
+      {
+        ...existing,
+        ...data,
+        code: existing.code, // Kode tidak diubah
+      },
+      client
+    );
+
+    if (Array.isArray(data.prices) && data.prices.length > 0) {
+      for (const p of data.prices) {
+        const compRes = await client.query(
+          'SELECT id, code FROM companies WHERE UPPER(code) = UPPER($1)',
+          [String(p.company_code).trim()]
+        );
+        if (compRes.rows.length === 0) {
+          const error = new Error(`Perusahaan '${p.company_code}' tidak terdaftar`);
+          error.status = 422;
+          throw error;
+        }
+        const company = compRes.rows[0];
+        const newPrice = Math.round(Number(p.price) || 0);
+
+        const oldPriceRes = await client.query(
+          'SELECT price FROM item_prices WHERE item_id = $1 AND company_id = $2',
+          [id, company.id]
+        );
+        const oldPrice = oldPriceRes.rows.length > 0 ? Number(oldPriceRes.rows[0].price) : 0;
+
+        if (oldPrice !== newPrice) {
+          await itemRepository.upsertPrice(id, company.id, newPrice, actorId, client);
+          await itemRepository.recordPriceHistory(
+            id,
+            company.id,
+            oldPrice,
+            newPrice,
+            'manual',
+            actorId,
+            client
+          );
+        }
+      }
+    }
+
+    await auditService.log(actorId, 'items', id, 'update_item', existing, updated, client);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  return await itemRepository.findById(id);
+};
+
+const updateItemPrices = async (id, pricesData, actorId) => {
+  const existing = await itemRepository.findById(id);
+  if (!existing) {
+    const error = new Error('Barang tidak ditemukan');
+    error.status = 404;
+    throw error;
+  }
+
+  if (!Array.isArray(pricesData) || pricesData.length === 0) {
+    const error = new Error('Data harga (prices) harus berupa array yang tidak kosong');
+    error.status = 400;
+    throw error;
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const p of pricesData) {
+      const compCode = String(p.company_code || '').trim();
+      const compRes = await client.query(
         'SELECT id, code FROM companies WHERE UPPER(code) = UPPER($1)',
-        [String(p.company_code).trim()]
+        [compCode]
       );
       if (compRes.rows.length === 0) {
-        const error = new Error(`Perusahaan '${p.company_code}' tidak terdaftar`);
+        const error = new Error(`Perusahaan '${compCode}' tidak terdaftar`);
         error.status = 422;
         throw error;
       }
       const company = compRes.rows[0];
 
-      const periodRes = await db.query(
-        'SELECT id FROM periods WHERE company_id = $1 AND year = $2',
-        [company.id, parseInt(p.period_year, 10)]
+      const oldPriceRes = await client.query(
+        'SELECT price FROM item_prices WHERE item_id = $1 AND company_id = $2',
+        [id, company.id]
       );
-      if (periodRes.rows.length === 0) {
-        const error = new Error(
-          `Periode untuk perusahaan ${company.code} tahun ${p.period_year} belum terdaftar`
-        );
-        error.status = 422;
-        throw error;
-      }
-      const period = periodRes.rows[0];
+      const oldPrice = oldPriceRes.rows.length > 0 ? Number(oldPriceRes.rows[0].price) : 0;
+      const newPrice = Math.round(Number(p.price) || 0);
 
-      await itemRepository.upsertPrice(
-        id,
-        company.id,
-        period.id,
-        Math.round(Number(p.price) || 0)
-      );
+      if (oldPrice !== newPrice) {
+        await itemRepository.upsertPrice(id, company.id, newPrice, actorId, client);
+        await itemRepository.recordPriceHistory(
+          id,
+          company.id,
+          oldPrice,
+          newPrice,
+          'manual',
+          actorId,
+          client
+        );
+      }
     }
-  } else {
-    if (data.price !== undefined || data.price_cn !== undefined) {
-      const pVal = data.price !== undefined ? data.price : data.price_cn;
-      await itemRepository.upsertPrice(id, 1, 1, Math.round(Number(pVal) || 0));
-    }
-    if (data.price_cnh !== undefined) {
-      await itemRepository.upsertPrice(id, 2, 2, Math.round(Number(data.price_cnh) || 0));
-    }
+
+    await auditService.log(actorId, 'items', id, 'update_item_prices', null, pricesData, client);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
   }
 
-  await auditService.log(actorId, 'items', id, 'update_item', existing, updated);
   return await itemRepository.findById(id);
 };
 
@@ -267,6 +336,7 @@ module.exports = {
   getItemDetail,
   createItem,
   updateItem,
+  updateItemPrices,
   updateItemStatus,
   listCoas,
   getCoaDetail,

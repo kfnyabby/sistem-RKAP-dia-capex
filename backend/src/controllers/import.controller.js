@@ -33,16 +33,13 @@ const importItems = async (req, res, next) => {
 
     const dryRun = req.query.dry_run === 'true' || req.body.dry_run === 'true';
     const companyCode = req.query.company_code || req.body.company_code || 'CN';
-    const periodYear =
-      req.query.period_year || req.body.period_year
-        ? parseInt(req.query.period_year || req.body.period_year, 10)
-        : 2027;
+    const updatePrices = req.query.update_prices === 'true' || req.body.update_prices === 'true';
 
     const result = await masterImportService.importItems(req.file.buffer, req.file.originalname, {
       dry_run: dryRun,
       actorId: req.user.id,
       company_code: companyCode,
-      period_year: periodYear,
+      update_prices: updatePrices,
     });
 
     res.json(result);

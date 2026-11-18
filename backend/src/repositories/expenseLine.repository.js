@@ -122,11 +122,13 @@ const findByDocAndItemId = async (docId, itemId, client = db) => {
   return res.rows[0] || null;
 };
 
-const getItemMasterPrice = async (itemId, companyId, periodId, client = db) => {
+const getItemMasterPrice = async (itemId, companyId, clientOrPeriod = db, maybeClient = db) => {
+  const client =
+    clientOrPeriod && typeof clientOrPeriod.query === 'function' ? clientOrPeriod : maybeClient;
   const res = await client.query(
     `SELECT price FROM item_prices 
-     WHERE item_id = $1 AND company_id = $2 AND period_id = $3`,
-    [parseInt(itemId, 10), parseInt(companyId, 10), parseInt(periodId, 10)]
+     WHERE item_id = $1 AND company_id = $2`,
+    [parseInt(itemId, 10), parseInt(companyId, 10)]
   );
   if (res.rows.length === 0) return null;
   return parseInt(res.rows[0].price, 10);
