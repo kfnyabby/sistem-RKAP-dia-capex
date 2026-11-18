@@ -11,7 +11,13 @@ const AuditService = require('./audit.service');
  */
 const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = null) => {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(fileBuffer);
+  try {
+    await workbook.xlsx.load(fileBuffer);
+  } catch {
+    const err = new Error('Berkas Excel rusak atau tidak dapat dibaca');
+    err.status = 400;
+    throw err;
+  }
 
   const worksheet =
     workbook.getWorksheet('Master_Unit') ||
@@ -63,13 +69,18 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
   const colUrutan = findCol(['urutan di menu', 'urutan']) || 22;
   const colIdDraf = findCol(['id draf', 'draf']) || 23;
 
+  // Cache data perusahaan
+  const compRes = await db.query('SELECT id, code, name FROM companies');
+  const compMap = new Map();
+  compRes.rows.forEach((c) => compMap.set(c.code.trim().toUpperCase(), c));
+
   // Cache data pendukung COA untuk pencocokan pendapatan
   const coaRes = await coaRepository.findAll({ per_page: 5000 });
   const allCoas = coaRes.data || [];
   const coaCodeMap = new Map();
   allCoas.forEach((c) => coaCodeMap.set(String(c.code).trim(), c.id));
 
-  // Cache existing units untuk perhitungan matched vs new
+  // Cache existing units untuk perhitungan matched vs new dan deteksi bentrok
   const existingUnits = await unitRepository.findAll({});
   const existingSourceMap = new Map();
   const existingCodeMap = new Map();
@@ -83,7 +94,9 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
   });
 
   const parsedRows = [];
-  const rowWarnings = [];
+  const rowErrors = [];
+  const seenCodesInFile = new Map();
+
   let totalRead = 0;
   let matchedExisting = 0;
   let newUnits = 0;
@@ -108,38 +121,56 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
     totalRead++;
 
     if (!rawIdDraf) {
-      rowWarnings.push({
+      rowErrors.push({
         row: rowNumber,
         source_key: '-',
         name: rawNamaMenu || rawNamaFinal,
-        warning: 'Kolom ID Draf tidak ditemukan pada baris ini (dilewati)',
+        error: 'Kolom ID Draf tidak ditemukan pada baris ini (dilewati)',
       });
       continue;
     }
 
-    // Resolusi Perusahaan (CN = 1, CNH = 2)
-    let companyId = 1;
-    if (rawPerusahaan.toUpperCase().includes('CNH') || rawIdDraf.toUpperCase().startsWith('CNH-')) {
-      companyId = 2;
-    } else if (rawPerusahaan.toUpperCase().includes('CN') || rawIdDraf.toUpperCase().startsWith('CN-')) {
-      companyId = 1;
+    // Resolusi Perusahaan (CN atau CNH) - Wajib dicari di tabel companies, tidak ada default
+    if (!rawPerusahaan) {
+      rowErrors.push({
+        row: rowNumber,
+        source_key: rawIdDraf,
+        name: rawNamaMenu || rawNamaFinal,
+        error: 'Kolom Perusahaan kosong. Wajib diisi CN atau CNH.',
+      });
+      continue;
     }
+
+    const company = compMap.get(rawPerusahaan.toUpperCase());
+    if (!company) {
+      rowErrors.push({
+        row: rowNumber,
+        source_key: rawIdDraf,
+        name: rawNamaMenu || rawNamaFinal,
+        error: `Perusahaan '${rawPerusahaan}' tidak dikenal atau tidak terdaftar di sistem`,
+      });
+      continue;
+    }
+    const companyId = company.id;
 
     // Resolusi Nama Unit
     let finalName = rawNamaFinal || rawNamaMenu || rawNamaLembar;
     if (!finalName) {
-      rowWarnings.push({
+      rowErrors.push({
         row: rowNumber,
         source_key: rawIdDraf,
         name: '-',
-        warning: 'Nama unit tidak ditemukan pada baris ini (dilewati)',
+        error: 'Nama unit tidak ditemukan pada baris ini (dilewati)',
       });
       continue;
     }
 
-    // Resolusi Kode Unit
+    // Resolusi Kode Unit & Keputusan
     const rawKodeFinal = String(row.getCell(colKodeFinal).value || '').trim();
     const rawKodeAwal = String(row.getCell(colKodeAwal).value || '').trim();
+    const rawKeputusan = String(row.getCell(colKeputusan).value || '').trim();
+    const normKeputusan = rawKeputusan.toLowerCase();
+
     let finalCode = null;
     if (rawKodeFinal && rawKodeFinal !== '-' && rawKodeFinal.toLowerCase() !== 'null') {
       finalCode = rawKodeFinal;
@@ -147,8 +178,52 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
       finalCode = rawKodeAwal;
     }
 
+    // Proteksi Kode: Kode kosong di file tidak menimpa kode yang sudah ada, kecuali Keputusan = Ubah dengan Kode final terisi
+    const existingUnit = existingSourceMap.get(`${companyId}_${rawIdDraf}`);
+    if (!finalCode && existingUnit && existingUnit.code) {
+      if (!(normKeputusan === 'ubah' && rawKodeFinal)) {
+        finalCode = existingUnit.code;
+      }
+    }
+
     if (!finalCode) {
       missingCode++;
+    }
+
+    // Deteksi Kode Final Ganda di dalam File dan Bentrok di Database
+    let isCodeDuplicate = false;
+    let duplicateError = null;
+
+    if (finalCode) {
+      const fileCodeKey = `${companyId}_${finalCode}`;
+      if (seenCodesInFile.has(fileCodeKey)) {
+        isCodeDuplicate = true;
+        duplicateError = `Kode final '${finalCode}' ganda di dalam berkas impor (baris ${seenCodesInFile.get(
+          fileCodeKey
+        )} dan baris ${rowNumber})`;
+      } else {
+        seenCodesInFile.set(fileCodeKey, rowNumber);
+      }
+
+      if (!isCodeDuplicate) {
+        const existingWithCode = existingCodeMap.get(fileCodeKey);
+        if (existingWithCode && existingWithCode.source_key !== rawIdDraf) {
+          isCodeDuplicate = true;
+          duplicateError = `Kode final '${finalCode}' sudah digunakan oleh unit lain di sistem (${existingWithCode.name})`;
+        }
+      }
+    }
+
+    if (isCodeDuplicate) {
+      rowErrors.push({
+        row: rowNumber,
+        source_key: rawIdDraf,
+        code: finalCode,
+        name: finalName,
+        error: duplicateError,
+      });
+      // Pada import sungguhan, baris yang duplikat/bentrok dilewati alih-alih menggagalkan seluruh transaksi
+      continue;
     }
 
     // Resolusi Kelompok Organisasi (org_groups)
@@ -180,48 +255,24 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
     }
 
     // Resolusi Keputusan Akuntansi & Status Aktif
-    const rawKeputusan = String(row.getCell(colKeputusan).value || '').trim().toLowerCase();
     let isActive = true;
-    if (rawKeputusan === 'hapus') {
+    if (normKeputusan === 'hapus') {
       isActive = false;
       inactiveUnits++;
     } else {
       activeUnits++;
     }
 
-    // Resolusi Isu / Perlu Review
-    const rawIsu = String(row.getCell(colIsu).value || '').trim();
-    const rawCatatan = String(row.getCell(colCatatan).value || '').trim();
-
-    let needsReview = false;
-    const issueReasons = [];
-
-    if (!finalCode) {
-      needsReview = true;
-      issueReasons.push('Tidak ada kode resmi');
-    }
-    if (rawKeputusan === 'gabung ke unit lain' || rawKeputusan.includes('gabung')) {
-      needsReview = true;
-      issueReasons.push('Keputusan: Gabung ke unit lain (perlu penanganan manual)');
-    }
-    if (rawIsu) {
-      needsReview = true;
-      issueReasons.push(rawIsu);
-    }
-    if (!finalClassification) {
-      needsReview = true;
-      issueReasons.push('Klasifikasi belum ditentukan');
-    }
+    // Resolusi needs_review:
+    // bernilai false bila Keputusan = Pakai, Ubah, atau Hapus, dan true bila kosong atau Gabung ke unit lain
+    const needsReview = !(
+      normKeputusan === 'pakai' ||
+      normKeputusan === 'ubah' ||
+      normKeputusan === 'hapus'
+    );
 
     if (needsReview) {
       needsReviewCount++;
-      rowWarnings.push({
-        row: rowNumber,
-        source_key: rawIdDraf,
-        code: finalCode || '(tanpa kode)',
-        name: finalName,
-        warning: issueReasons.join('; '),
-      });
     }
 
     // Urutan di menu
@@ -229,11 +280,13 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
     const orderNo = !isNaN(rawUrutan) ? rawUrutan : rowNumber - 1;
 
     // Catatan Akuntansi & Isu
+    const rawIsu = String(row.getCell(colIsu).value || '').trim();
+    const rawCatatan = String(row.getCell(colCatatan).value || '').trim();
     const combinedNotes = [rawCatatan, rawIsu ? `[Isu: ${rawIsu}]` : null]
       .filter(Boolean)
       .join(' | ');
 
-    // Cek keberadaan di data lama (baik via source_key maupun via company_id + code)
+    // Cek keberadaan di data lama
     const isMatched =
       existingSourceMap.has(`${companyId}_${rawIdDraf}`) ||
       (finalCode && existingCodeMap.has(`${companyId}_${finalCode}`));
@@ -246,6 +299,7 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
 
     parsedRows.push({
       company_id: companyId,
+      company_code: company.code,
       source_key: rawIdDraf,
       code: finalCode,
       name: finalName,
@@ -270,6 +324,7 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
     inactive_units: inactiveUnits,
     needs_review_count: needsReviewCount,
     missing_code: missingCode,
+    skipped_duplicates: rowErrors.length,
   };
 
   // Jika mode dry_run = true, selesaikan tanpa menyimpan ke database
@@ -279,8 +334,9 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
       dry_run: true,
       filename,
       summary,
-      errors: rowWarnings,
-      message: 'Simulasi import draf unit berhasil dilakukan. Tidak ada data yang diubah di database.',
+      errors: rowErrors,
+      message:
+        'Simulasi import draf unit berhasil dilakukan. Tidak ada data yang diubah di database.',
     };
   }
 
@@ -290,24 +346,29 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
     await client.query('BEGIN');
 
     for (const item of parsedRows) {
-      // 1. Dapatkan atau buat kelompok organisasi
+      // Tipe kelompok organisasi mengikuti perusahaan (CN: instalasi; CNH: unit_bisnis & klinik)
+      const isCN = item.company_code === 'CN';
+      const mainGroupType = isCN ? 'instalasi' : 'unit_bisnis';
+      const subGroupType = isCN ? 'instalasi' : 'klinik';
+
+      // 1. Dapatkan atau buat kelompok organisasi utama
       let groupId = null;
       if (item.group_name) {
         groupId = await unitRepository.findOrCreateOrgGroup(
           item.company_id,
           item.group_name,
-          'instalasi',
+          mainGroupType,
           null,
           client
         );
       }
 
-      // Jika ada subkelompok, buatkan org_group dengan parent_id = groupId
+      // Jika ada subkelompok, buatkan org_group anak dengan parent_id = groupId
       if (item.sub_group_name && groupId) {
         groupId = await unitRepository.findOrCreateOrgGroup(
           item.company_id,
           item.sub_group_name,
-          'instalasi',
+          subGroupType,
           groupId,
           client
         );
@@ -372,7 +433,7 @@ const importMasterUnits = async (fileBuffer, filename, dryRun = false, user = nu
       dry_run: false,
       filename,
       summary,
-      errors: rowWarnings,
+      errors: rowErrors,
       message: `Import master unit berhasil disimpan: ${newUnits} unit baru, ${matchedExisting} unit diperbarui.`,
     };
   } catch (err) {

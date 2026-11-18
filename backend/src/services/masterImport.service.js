@@ -13,10 +13,47 @@ const normalizeHeader = (h) =>
     .replace(/[\s_-]+/g, '');
 
 const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options = {}) => {
-  const { dry_run = true, actorId = null } = options;
+  const {
+    dry_run = true,
+    actorId = null,
+    company_code = 'CN',
+    period_year = 2027,
+  } = options;
 
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(fileBuffer);
+  try {
+    await workbook.xlsx.load(fileBuffer);
+  } catch {
+    const err = new Error('Berkas Excel rusak atau tidak dapat dibaca');
+    err.status = 400;
+    throw err;
+  }
+
+  // Validasi Perusahaan
+  const companyRes = await db.query(
+    'SELECT id, code, name FROM companies WHERE UPPER(code) = UPPER($1)',
+    [String(company_code).trim()]
+  );
+  if (companyRes.rows.length === 0) {
+    const err = new Error(`Perusahaan dengan kode '${company_code}' tidak ditemukan`);
+    err.status = 422;
+    throw err;
+  }
+  const company = companyRes.rows[0];
+
+  // Validasi Periode
+  const periodRes = await db.query(
+    'SELECT id, company_id, year FROM periods WHERE company_id = $1 AND year = $2',
+    [company.id, parseInt(period_year, 10)]
+  );
+  if (periodRes.rows.length === 0) {
+    const err = new Error(
+      `Periode untuk perusahaan ${company.code} tahun ${period_year} belum terdaftar`
+    );
+    err.status = 422;
+    throw err;
+  }
+  const period = periodRes.rows[0];
 
   // Cari worksheet MASTER_BARANG atau worksheet pertama
   let sheet = workbook.worksheets.find((ws) =>
@@ -214,9 +251,8 @@ const importItems = async (fileBuffer, filename = 'Master_Barang.xlsx', options 
           client
         );
 
-        // Update harga untuk CN (company 1, period 1) dan CNH (company 2, period 2)
-        await itemRepository.upsertPrice(savedItem.id, 1, 1, row.price, client);
-        await itemRepository.upsertPrice(savedItem.id, 2, 2, row.price, client);
+        // Update harga HANYA untuk perusahaan dan periode yang dipilih (JANGAN menulis harga CNH)
+        await itemRepository.upsertPrice(savedItem.id, company.id, period.id, row.price, client);
       }
 
       // Catat ke log import
@@ -269,7 +305,13 @@ const importCoas = async (fileBuffer, filename = 'Master_COA.xlsx', options = {}
   const { dry_run = true, actorId = null } = options;
 
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(fileBuffer);
+  try {
+    await workbook.xlsx.load(fileBuffer);
+  } catch {
+    const err = new Error('Berkas Excel rusak atau tidak dapat dibaca');
+    err.status = 400;
+    throw err;
+  }
 
   const sheetMasterCoa = workbook.worksheets.find(
     (ws) => normalizeHeader(ws.name) === 'mastercoa' || ws.name.toLowerCase().includes('master coa')

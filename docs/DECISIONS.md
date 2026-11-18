@@ -68,9 +68,35 @@ Urutan prioritas sumber kebenaran: DECISIONS.md, lalu AGENTS.md (stack dan struk
 | 38 | 2026-11-17 | **Penyesuaian Skema Master Unit (Migrasi 004)**: Kolom `units.code` boleh NULL (keunikan kode parsial hanya untuk kode terisi per perusahaan). Ditambahkan kolom `source_key` (ID Draf unik per perusahaan), `needs_review`, `revenue_coa_code`, `revenue_coa_name`, serta `org_groups.parent_id`. | Mengakomodasi unit kerja operasional yang belum memiliki kode resmi serta memungkinkan pemetaan hierarki kelompok organisasi. | Disetujui |
 | 39 | 2026-11-17 | **Import Draf Master Unit (`POST /api/units/import`)**: Membaca sheet `Master_Unit` dari draf spreadsheet, pencocokan baris berbasis `source_key` (ID Draf) dengan aturan sheet Petunjuk (resolusi nilai final/awal, keputusan Pakai/Ubah/Hapus/Gabung, kalkulasi otomatis `needs_review`, opsi `dry_run`, dan upsert idempoten). | Mencegah duplikasi data unit saat verifikasi Akuntansi berlangsung bertahap dan menonaktifkan unit 'Hapus' secara aman. | Disetujui |
 
-## F. Pertanyaan terbuka yang tidak memblokir Fase 2
+## F. Keputusan Fase 3 (Dokumen Anggaran & Entry Anggaran Biaya)
+
+| # | Tanggal | Keputusan | Alasan | Status |
+|---|---|---|---|---|
+| 40 | 2026-11-17 | **Versioning Baris & Constraint Keunikan (Migrasi 005)**: Menambahkan kolom `version` pada `expense_lines` dan `budget_docs` serta constraint `uq_expense_lines_doc_item` pada `(doc_id, item_id)`. | Mencegah konflik modifikasi bersamaan (*optimistic locking*) dan duplikasi barang dalam satu dokumen anggaran biaya. | Disetujui |
+| 41 | 2026-11-17 | **Immutabilitas Snapshot Harga (BR-03)**: Nilai `price_snapshot` disalin dari master `item_prices` pada saat penyimpanan awal dan tidak terpengaruh oleh perubahan harga master di masa mendatang. | Menjamin kepastian angka anggaran historis dokumen yang telah disusun unit kerja. | Disetujui |
+| 42 | 2026-11-17 | **Penolakan Barang Tanpa Harga Master**: Barang yang belum memiliki harga master atau bernilai Rp 0 pada periode dan perusahaan terkait ditolak dengan status 422 Unprocessable Entity. | Menghindari baris anggaran tanpa dasar biaya satuan yang valid. | Disetujui |
+| 43 | 2026-11-17 | **Isolasi Repository Fail-Closed pada Baris Biaya**: Seluruh operasi baca, tulis, dan hapus pada baris biaya memverifikasi kepemilikan unit dokumen di level repository. | Memastikan PIC/Manager tidak dapat memanipulasi dokumen unit lain lewat ID baris atau ID dokumen langsung. | Disetujui |
+| 44 | 2026-11-17 | **Simpan Otomatis Berbasis Debounce (FR-B5)**: Menggunakan debounce 700ms pada pengubahan kuantitas inline dengan indikator chip status `"Tersimpan otomatis · HH:mm"`, tanpa tombol "Simpan draft". | Memberikan pengalaman pengisian anggaran yang mulus dan mencegah penumpukan request ke server. | Disetujui |
+| 45 | 2026-11-17 | **Penangguhan Workflow Approval & Barang Baru**: Tombol "Ajukan ke Manager" dan form "Permintaan barang baru" ditangguhkan ke Fase 3b / fase berikutnya. | Menjaga fokus implementasi sesuai batas instruksi Fase 3. | Disetujui |
+
+## G. Keputusan Koreksi Fase 2b (Master Data, Import & Kualitas)
+
+| # | Tanggal | Keputusan | Alasan | Status |
+|---|---|---|---|---|
+| 46 | 2026-11-18 | **Master Barang adalah Milik CN & Harga CNH Menunggu Master CNH**: Import barang (`POST /api/items/import`) hanya menulis HPP untuk satu perusahaan yang dipilih via parameter `company_code` (default CN) dan `period_year` yang valid di tabel `periods`; sistem tidak menulis harga CNH secara spekulatif. | Menyesuaikan FR-M11 dan data logistik riil di mana master barang yang ada merupakan kepemilikan PT CN; penetapan harga CNH menunggu ketersediaan master terpisah dari CNH. | Disetujui |
+| 47 | 2026-11-18 | **COA Pendapatan Disimpan sebagai Teks**: Kolom `revenue_coa_code` dan `revenue_coa_name` disimpan sebagai teks pada tabel `units` di samping relasi opsional `revenue_coa_id`. | Mengakomodasi unit kerja yang memiliki kode COA Pendapatan pada draf spreadsheet namun akun tersebut belum terdaftar resmi pada Master COA. | Disetujui |
+| 48 | 2026-11-18 | **Tujuh Unit Tanpa Kode Diimpor Tanpa Kode**: Mengizinkan kolom `units.code` bernilai `NULL` (didukung constraint indeks unik parsial per perusahaan) serta menandai `needs_review = true`. | Mengakomodasi unit operasional yang belum memiliki kode resmi tanpa memblokir proses impor draf unit kerja. | Disetujui |
+| 49 | 2026-11-18 | **Daftar Barang Unit Mulai Kosong dengan Dialog Tambah dari Master**: Saat dokumen anggaran biaya baru dibuat, baris biaya dimulai dalam keadaan kosong; pengguna menambahkan barang yang dibutuhkan melalui dialog modal "Tambah dari master". | Menghindari pembuatan ribuan baris kosong yang tidak relevan bagi unit kerja tertentu dan mempercepat performa rendering lembar kerja. | Usulan |
+| 50 | 2026-11-18 | **Kolom Real Menampilkan "—" Sampai Fase 6**: Kolom Realisasi (Real) pada tabel entry anggaran menampilkan tanda strip ("—") hingga integrasi modul Jurnal Realisasi dibangun pada Fase 6. | Mencegah kebingungan pengguna atas angka realisasi yang belum tersedia datanya di sistem. | Usulan |
+| 51 | 2026-11-18 | **Barang Tanpa Harga Perusahaan Tidak Bisa Diisi**: Barang master yang belum memiliki harga aktif pada perusahaan dokumen anggaran yang bersangkutan tidak dapat ditambahkan atau diisi kuantitasnya. | Memastikan setiap kuantitas anggaran memiliki dasar perkalian HPP rupiah yang valid (BR-02). | Usulan |
+| 52 | 2026-11-18 | **Periode Anggaran Hanya Dibuat (GET, POST) di Fase 3**: Manajemen periode anggaran pada Fase 3 dibatasi pada endpoint `GET /api/periods` dan `POST /api/periods` khusus peran Akuntansi. | Memfokuskan cakupan fase sesuai instruksi PRD tanpa mendahului fitur manajemen lanjutan periode. | Usulan |
+| 53 | 2026-11-18 | **Dokumen Anggaran Hanya Bisa Diubah Saat DRAFT**: Mutasi kuantitas baris biaya hanya diizinkan pada saat dokumen berstatus `DRAFT`; status selain `DRAFT` bersifat baca-saja (*read-only*). | Menjamin integritas dokumen yang sedang direview atau telah disahkan (BR-06). | Usulan |
+| 54 | 2026-11-18 | **Kuantitas NUMERIC(14,2) & Amount ROUND(qty × harga) sebagai Bigint**: Nilai kuantitas disimpan dengan tipe `NUMERIC(14,2)` untuk mendukung satuan pecahan, sedangkan total nilai biaya (`amount`) dibulatkan sebagai `bigint` rupiah tanpa nilai desimal (sen). | Mematuhi aturan arsitektur B4 AGENTS.md bahwa uang disimpan sebagai bilangan bulat rupiah tanpa floating point. | Usulan |
+| 55 | 2026-11-18 | **Bentrok Edit Menggunakan Nomor Versi per Baris (*Optimistic Locking*)**: Setiap perubahan kuantitas baris biaya memverifikasi nomor `version`; bentrok modifikasi bersamaan ditolak dengan status 409 Conflict dan pesan yang jelas. | Mencegah penimpaan perubahan antar pengguna (*lost updates*) saat bekerja bersamaan pada dokumen yang sama. | Usulan |
+
+## H. Pertanyaan terbuka yang tidak memblokir fase berjalan
 - PRD nomor 4: berapa Manager per unit dan adakah persetujuan di atas Manager (memengaruhi Fase 5).
 - PRD nomor 9: hosting dan SSO (diantisipasi oleh baris 18).
 
-## G. Pertanyaan terbuka yang memblokir fase berikutnya
+## I. Pertanyaan terbuka yang memblokir fase berikutnya
 Lihat PRD bagian 14. Yang paling mendesak: nomor 6 (ambang investasi per item atau per baris), 12 (akun realisasi investasi), 13 (master dan harga CNH), 16 (format export matriks).

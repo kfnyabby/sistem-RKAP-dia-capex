@@ -198,72 +198,95 @@ export default function MasterDataView() {
       {subTab === 'barang' && (
         <div className="space-y-4">
           {/* Card Hasil Pemeriksaan Import Terakhir sesuai mockup 11-master-data.html */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="text-sm font-bold text-slate-800">
-                Hasil pemeriksaan import terakhir ·{' '}
-                <span className="text-primary-700 font-medium">
-                  {qualityReport?.last_import?.filename || 'Master_Barang_Logistik.xlsx'}
+          {qualityReport?.last_import ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h2 className="text-sm font-bold text-slate-800">
+                  Hasil pemeriksaan import terakhir ·{' '}
+                  <span className="text-primary-700 font-medium">
+                    {qualityReport.last_import.filename}
+                  </span>
+                </h2>
+                <span className="text-[11px] text-slate-400">
+                  {qualityReport.last_import.created_at
+                    ? new Date(qualityReport.last_import.created_at).toLocaleString('id-ID')
+                    : '-'}
                 </span>
-              </h2>
-              <span className="text-[11px] text-slate-400">
-                {qualityReport?.last_import?.created_at
-                  ? new Date(qualityReport.last_import.created_at).toLocaleString('id-ID')
-                  : 'Data seed dev'}
-              </span>
-            </div>
+              </div>
 
-            {/* Grid 4 Nilai Utama */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
-                <div className="text-xs text-slate-500 font-medium">Barang dibaca</div>
-                <div className="text-2xl font-bold text-slate-800 mt-1">
-                  {qualityReport?.last_import?.total_read?.toLocaleString('id-ID') ||
-                    qualityReport?.live_metrics?.total_items?.toLocaleString('id-ID') ||
-                    '3.204'}
+              {/* Grid 4 Nilai Utama */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-500 font-medium">Barang dibaca</div>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">
+                    {qualityReport.last_import.total_read?.toLocaleString('id-ID') ?? 0}
+                  </div>
+                </div>
+                <div className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-500 font-medium">Cocok dengan master lama</div>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">
+                    {qualityReport.last_import.matched_existing?.toLocaleString('id-ID') ?? 0}
+                  </div>
+                </div>
+                <div className="bg-emerald-50/60 p-3 rounded-lg border border-emerald-100">
+                  <div className="text-xs text-emerald-700 font-medium">Barang baru</div>
+                  <div className="text-2xl font-bold text-emerald-800 mt-1">
+                    {qualityReport.last_import.new_items?.toLocaleString('id-ID') ?? 0}
+                  </div>
+                </div>
+                <div className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
+                  <div className="text-xs text-slate-500 font-medium">Tanpa COA</div>
+                  <div className="text-2xl font-bold text-slate-800 mt-1">
+                    {qualityReport.last_import.missing_coa?.toLocaleString('id-ID') ?? 0}
+                  </div>
                 </div>
               </div>
-              <div className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
-                <div className="text-xs text-slate-500 font-medium">Cocok dengan master lama</div>
-                <div className="text-2xl font-bold text-slate-800 mt-1">
-                  {qualityReport?.last_import?.matched_existing?.toLocaleString('id-ID') || '3.080'}
-                </div>
-              </div>
-              <div className="bg-emerald-50/60 p-3 rounded-lg border border-emerald-100">
-                <div className="text-xs text-emerald-700 font-medium">Barang baru</div>
-                <div className="text-2xl font-bold text-emerald-800 mt-1">
-                  {qualityReport?.last_import?.new_items?.toLocaleString('id-ID') || '124'}
-                </div>
-              </div>
-              <div className="bg-slate-50/70 p-3 rounded-lg border border-slate-100">
-                <div className="text-xs text-slate-500 font-medium">Tanpa COA</div>
-                <div className="text-2xl font-bold text-slate-800 mt-1">
-                  {qualityReport?.last_import?.missing_coa?.toLocaleString('id-ID') ||
-                    qualityReport?.live_metrics?.items_without_coa?.toLocaleString('id-ID') ||
-                    '0'}
-                </div>
-              </div>
-            </div>
 
-            {/* Pill Peringatan Baris */}
-            <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-medium">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                {qualityReport?.last_import?.coa_changed || 35} barang COA-nya berubah
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-medium">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                {qualityReport?.last_import?.hpp_zero ||
-                  qualityReport?.live_metrics?.items_with_zero_price ||
-                  52}{' '}
-                barang HPP Rp 0
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-900 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5 text-purple-700" />
-                1 barang ada di spreadsheet, tidak ada di master
-              </span>
+              {/* Pill Peringatan Baris */}
+              <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  {qualityReport.last_import.coa_changed ?? 0} barang COA-nya berubah
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  {qualityReport.last_import.hpp_zero ?? 0} barang HPP Rp 0
+                </span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs text-center space-y-1.5">
+              <div className="text-sm font-semibold text-slate-700">Belum ada import</div>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Belum ada riwayat berkas Master Barang yang diimpor ke sistem. Gunakan tombol <strong>Import Excel</strong> untuk mengunggah lembar kerja logistik.
+              </p>
+            </div>
+          )}
+
+          {/* Rekapitulasi Barang Tanpa Harga per Perusahaan & Periode */}
+          {qualityReport?.live_metrics?.items_without_price_by_period &&
+            qualityReport.live_metrics.items_without_price_by_period.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-2">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Barang Aktif Tanpa Harga Master
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {qualityReport.live_metrics.items_without_price_by_period.map((m) => (
+                    <div
+                      key={`${m.company_code}_${m.period_year}`}
+                      className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-amber-900">{m.company_code}</span> · Tahun {m.period_year}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full font-bold bg-amber-200 text-amber-900">
+                        {m.items_without_price} barang
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           {/* Info Banner Harga CN vs CNH sesuai mockup */}
           <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs leading-relaxed space-y-1">

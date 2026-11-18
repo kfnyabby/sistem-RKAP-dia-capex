@@ -109,7 +109,7 @@ const findAll = async (params = {}) => {
   };
 };
 
-const findById = async (id) => {
+const findById = async (id, client = db) => {
   const itemId = parseInt(id, 10);
   if (isNaN(itemId)) return null;
 
@@ -129,8 +129,30 @@ const findById = async (id) => {
     LEFT JOIN item_prices p_cnh ON i.id = p_cnh.item_id AND p_cnh.company_id = 2 AND p_cnh.period_id = 2
     WHERE i.id = $1
   `;
-  const res = await db.query(sql, [itemId]);
-  return res.rows[0] || null;
+  const res = await client.query(sql, [itemId]);
+  const item = res.rows[0] || null;
+  if (!item) return null;
+
+  // Ambil seluruh daftar harga per perusahaan dan periode
+  const pricesSql = `
+    SELECT
+      comp.code AS company_code,
+      p.year AS period_year,
+      ip.price
+    FROM item_prices ip
+    JOIN companies comp ON ip.company_id = comp.id
+    JOIN periods p ON ip.period_id = p.id
+    WHERE ip.item_id = $1
+    ORDER BY comp.code ASC, p.year ASC
+  `;
+  const pricesRes = await client.query(pricesSql, [itemId]);
+  item.prices = pricesRes.rows.map((row) => ({
+    company_code: row.company_code,
+    period_year: row.period_year,
+    price: parseInt(row.price, 10),
+  }));
+
+  return item;
 };
 
 const findByCode = async (code, client = db) => {
@@ -244,12 +266,134 @@ const getQualityMetrics = async (client = db) => {
   `;
   const diffPricesRes = await client.query(diffPricesSql);
 
+  // Hitungan barang tanpa harga per perusahaan dan periode (FR-M8 & Fase 2b)
+  const noPricesByPeriodSql = `
+    SELECT
+      comp.code AS company_code,
+      comp.name AS company_name,
+      p.year AS period_year,
+      p.id AS period_id,
+      COUNT(i.id)::int AS items_without_price
+    FROM companies comp
+    JOIN periods p ON p.company_id = comp.id
+    CROSS JOIN items i
+    WHERE i.is_active = TRUE
+      AND NOT EXISTS (
+        SELECT 1 FROM item_prices ip
+        WHERE ip.item_id = i.id
+          AND ip.company_id = comp.id
+          AND ip.period_id = p.id
+          AND ip.price > 0
+      )
+    GROUP BY comp.id, comp.code, comp.name, p.id, p.year
+    ORDER BY comp.code ASC, p.year ASC
+  `;
+  const noPricesRes = await client.query(noPricesByPeriodSql);
+
   return {
     total_items: parseInt(row.total_items, 10),
     items_without_coa: parseInt(row.items_without_coa, 10),
     inactive_items: parseInt(row.inactive_items, 10),
     hpp_zero_count: parseInt(hppZeroRes.rows[0].count, 10),
     diff_prices_cn_cnh: parseInt(diffPricesRes.rows[0].count, 10),
+    items_without_price_by_period: noPricesRes.rows.map((r) => ({
+      company_code: r.company_code,
+      company_name: r.company_name,
+      period_year: r.period_year,
+      period_id: r.period_id,
+      items_without_price: parseInt(r.items_without_price, 10),
+    })),
+  };
+};
+
+const getAvailableForDoc = async (docId, companyId, periodId, params = {}) => {
+  const { q, group_id, coa_id, page = 1, per_page = 25 } = params;
+
+  const conditions = [
+    'i.is_active = TRUE',
+    'i.coa_id IS NOT NULL',
+    'NOT EXISTS (SELECT 1 FROM expense_lines el WHERE el.doc_id = $1 AND el.item_id = i.id)',
+  ];
+  const queryParams = [parseInt(docId, 10)];
+  let paramIdx = 2;
+
+  if (q && q.trim()) {
+    conditions.push(
+      `(i.name ILIKE $${paramIdx} OR i.code ILIKE $${paramIdx} OR i.product_code ILIKE $${paramIdx})`
+    );
+    queryParams.push(`%${q.trim()}%`);
+    paramIdx++;
+  }
+
+  if (group_id) {
+    conditions.push(`c.group_id = $${paramIdx}`);
+    queryParams.push(parseInt(group_id, 10));
+    paramIdx++;
+  }
+
+  if (coa_id) {
+    conditions.push(`i.coa_id = $${paramIdx}`);
+    queryParams.push(parseInt(coa_id, 10));
+    paramIdx++;
+  }
+
+  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+  const countSql = `
+    SELECT COUNT(*) as total 
+    FROM items i
+    JOIN coas c ON c.id = i.coa_id
+    ${whereClause}
+  `;
+  const countRes = await db.query(countSql, queryParams);
+  const total = parseInt(countRes.rows[0].total, 10);
+
+  const parsedPage = Math.max(1, parseInt(page, 10));
+  const parsedPerPage = Math.max(1, parseInt(per_page, 10));
+  const offset = (parsedPage - 1) * parsedPerPage;
+
+  const dataSql = `
+    SELECT 
+      i.id AS item_id,
+      i.id,
+      i.code AS item_code,
+      i.name AS item_name,
+      i.uom,
+      i.coa_id,
+      c.code AS coa_code,
+      c.name AS coa_name,
+      c.group_id,
+      COALESCE(cg.name, 'Lainnya') AS group_name,
+      COALESCE(ip.price, 0) AS price
+    FROM items i
+    JOIN coas c ON c.id = i.coa_id
+    LEFT JOIN coa_groups cg ON cg.id = c.group_id
+    LEFT JOIN item_prices ip ON ip.item_id = i.id 
+      AND ip.company_id = $${paramIdx} 
+      AND ip.period_id = $${paramIdx + 1}
+    ${whereClause}
+    ORDER BY c.code ASC, i.name ASC
+    LIMIT $${paramIdx + 2} OFFSET $${paramIdx + 3}
+  `;
+  queryParams.push(
+    parseInt(companyId, 10),
+    parseInt(periodId, 10),
+    parsedPerPage,
+    offset
+  );
+
+  const dataRes = await db.query(dataSql, queryParams);
+
+  return {
+    data: dataRes.rows.map((r) => ({
+      ...r,
+      price: parseInt(r.price, 10),
+    })),
+    meta: {
+      page: parsedPage,
+      per_page: parsedPerPage,
+      total,
+    },
   };
 };
 
@@ -261,5 +405,6 @@ module.exports = {
   upsertPrice,
   updateStatus,
   getQualityMetrics,
+  getAvailableForDoc,
 };
 

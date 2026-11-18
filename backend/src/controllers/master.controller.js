@@ -1,9 +1,18 @@
 const masterDataService = require('../services/masterData.service');
 const masterQualityService = require('../services/masterQuality.service');
+const expenseBudgetService = require('../services/expenseBudget.service');
 
 // Items
 const getItems = async (req, res, next) => {
   try {
+    if (req.query.available_for_doc) {
+      const result = await expenseBudgetService.getAvailableItemsForDoc(
+        req.query.available_for_doc,
+        req.query,
+        req.user
+      );
+      return res.json(result);
+    }
     const result = await masterDataService.listItems(req.query);
     res.json(result);
   } catch (err) {

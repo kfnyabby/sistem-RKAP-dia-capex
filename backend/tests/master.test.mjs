@@ -103,18 +103,24 @@ describe('Master Data Test Suite (Fase 2)', () => {
   });
 
   describe('2. Laporan Kualitas Master Data (/api/items/quality-report)', () => {
-    it('Akuntansi dapat melihat ringkasan kualitas master dan peringatan harga', async () => {
+    it('Bila belum ada import, last_import bernilai null dan live_metrics menghitung barang tanpa harga per perusahaan/periode', async () => {
       const akt = await loginAs('dya@ptcn.id');
+
+      // Hapus riwayat import ITEMS untuk menguji kondisi awal
+      await db.query("DELETE FROM import_logs WHERE type = 'ITEMS'");
 
       const res = await request(app)
         .get('/api/items/quality-report')
         .set('Cookie', akt.cookie);
 
       expect(res.status).toBe(200);
-      expect(res.body).toHaveProperty('last_import');
+      expect(res.body.last_import).toBeNull(); // Tidak ada angka fallback cadangan
       expect(res.body).toHaveProperty('live_metrics');
       expect(res.body).toHaveProperty('price_warning');
       expect(res.body.live_metrics.total_items).toBeGreaterThan(0);
+      expect(res.body.live_metrics).toHaveProperty('items_without_price_by_period');
+      expect(Array.isArray(res.body.live_metrics.items_without_price_by_period)).toBe(true);
+      expect(res.body.live_metrics.items_without_price_by_period.length).toBeGreaterThan(0);
     });
   });
 
@@ -144,11 +150,11 @@ describe('Master Data Test Suite (Fase 2)', () => {
       expect(checkDb.rows.length).toBe(0);
     });
 
-    it('Mode dry_run=false mengeksekusi penyimpanan ke database dan mencatat log import', async () => {
+    it('Mode dry_run=false hanya menulis HPP untuk perusahaan terpilih (CN) dan TIDAK menulis harga CNH', async () => {
       const akt = await loginAs('dya@ptcn.id');
 
       const res = await request(app)
-        .post('/api/items/import?dry_run=false')
+        .post('/api/items/import?dry_run=false&company_code=CN&period_year=2027')
         .set('Cookie', akt.cookie)
         .set('X-CSRF-Token', akt.csrfToken)
         .attach('file', dummyItemFile);
@@ -161,6 +167,22 @@ describe('Master Data Test Suite (Fase 2)', () => {
       const checkDb = await db.query("SELECT * FROM items WHERE code = '101'");
       expect(checkDb.rows.length).toBe(1);
       expect(checkDb.rows[0].name).toBe('KERTAS EKG THERMAL ROLL DUMMY');
+      const itemId = checkDb.rows[0].id;
+
+      // Verifikasi HPP tersimpan HANYA untuk CN (company_id = 1)
+      const priceCn = await db.query(
+        'SELECT * FROM item_prices WHERE item_id = $1 AND company_id = 1',
+        [itemId]
+      );
+      expect(priceCn.rows.length).toBe(1);
+      expect(Number(priceCn.rows[0].price)).toBe(45000);
+
+      // Verifikasi JANGAN menulis harga CNH (company_id = 2)
+      const priceCnh = await db.query(
+        'SELECT * FROM item_prices WHERE item_id = $1 AND company_id = 2',
+        [itemId]
+      );
+      expect(priceCnh.rows.length).toBe(0);
 
       // Verifikasi tabel import_logs mencatat transaksi
       const logDb = await db.query(
@@ -168,6 +190,19 @@ describe('Master Data Test Suite (Fase 2)', () => {
       );
       expect(logDb.rows.length).toBe(1);
       expect(logDb.rows[0].total_read).toBe(6);
+    });
+
+    it('Import barang menolak dengan status 422 bila tahun periode belum terdaftar di database', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const res = await request(app)
+        .post('/api/items/import?company_code=CN&period_year=2099')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', dummyItemFile);
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toMatch(/periode.*2099.*belum terdaftar/i);
     });
   });
 
@@ -193,7 +228,7 @@ describe('Master Data Test Suite (Fase 2)', () => {
     it('Akuntansi dapat menambah dan memperbarui barang', async () => {
       const akt = await loginAs('dya@ptcn.id');
 
-      // 1. Tambah barang
+      // 1. Tambah barang dengan format daftar prices: [{ company_code, period_year, price }]
       const createRes = await request(app)
         .post('/api/items')
         .set('Cookie', akt.cookie)
@@ -203,12 +238,30 @@ describe('Master Data Test Suite (Fase 2)', () => {
           name: 'Barang Master Baru',
           uom: 'Kotak',
           group_name: 'Bahan Medis',
-          price_cn: 50000,
-          price_cnh: 55000,
+          prices: [{ company_code: 'CN', period_year: 2027, price: 50000 }],
         });
 
       expect(createRes.status).toBe(201);
       const itemId = createRes.body.data.id;
+
+      // Verifikasi pembacaan detail barang mengembalikan daftar prices
+      const detailRes = await request(app).get(`/api/items/${itemId}`).set('Cookie', akt.cookie);
+      expect(detailRes.status).toBe(200);
+      expect(Array.isArray(detailRes.body.prices)).toBe(true);
+      expect(detailRes.body.prices[0].company_code).toBe('CN');
+      expect(detailRes.body.prices[0].price).toBe(50000);
+
+      // Verifikasi pembaruan harga via PUT /api/items/:id
+      const updateRes = await request(app)
+        .put(`/api/items/${itemId}`)
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .send({
+          name: 'Barang Master Baru Diperbarui',
+          prices: [{ company_code: 'CN', period_year: 2027, price: 75000 }],
+        });
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.data.prices[0].price).toBe(75000);
 
       // 2. Update status barang
       const patchRes = await request(app)
@@ -373,6 +426,231 @@ describe('Master Data Test Suite (Fase 2)', () => {
         .set('Cookie', akt.cookie);
       expect(filterRes.status).toBe(200);
       expect(filterRes.body.data.every((u) => u.needs_review === true)).toBe(true);
+
+      // 9. Verifikasi tipe kelompok organisasi mengikuti perusahaan (CN: instalasi, CNH: unit_bisnis & klinik)
+      const cnGroup = await db.query(
+        "SELECT type FROM org_groups WHERE company_id = 1 AND LOWER(name) = LOWER('INSTALASI PENUNJANG MEDIK')"
+      );
+      expect(cnGroup.rows.length).toBe(1);
+      expect(cnGroup.rows[0].type).toBe('instalasi');
+
+      const cnhGroup = await db.query(
+        "SELECT type FROM org_groups WHERE company_id = 2 AND LOWER(name) = LOWER('UNIT BISNIS KLINIK')"
+      );
+      expect(cnhGroup.rows.length).toBe(1);
+      expect(cnhGroup.rows[0].type).toBe('unit_bisnis');
+
+      const cnhSubGroup = await db.query(
+        "SELECT type, parent_id FROM org_groups WHERE company_id = 2 AND LOWER(name) = LOWER('KLINIK UTAMA')"
+      );
+      expect(cnhSubGroup.rows.length).toBe(1);
+      expect(cnhSubGroup.rows[0].type).toBe('klinik');
+      expect(cnhSubGroup.rows[0].parent_id).not.toBeNull();
+    });
+
+    it('Import unit mendeteksi duplikasi kode di file dan bentrok di database, serta menolak perusahaan tidak dikenal', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+      const ExcelJS = (await import('exceljs')).default;
+
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Master_Unit');
+      ws.addRow([
+        'No.',
+        'Perusahaan',
+        'Kode',
+        'Nama unit (di MENU)',
+        'Kelompok utama (MENU)',
+        'Subkelompok (MENU)',
+        'Lembar RKAP 2027',
+        'Nama di lembar RKAP',
+        'Klasifikasi di template BIAYA',
+        'Klasifikasi (usulan)',
+        'COA Pendapatan',
+        'Nama pendapatan',
+        'Kategori analitik (template)',
+        'Ada di jurnal CN Okt 2026',
+        'Isu perlu dicek',
+        'Keputusan Akuntansi',
+        'Kode final',
+        'Nama final',
+        'Kelompok final',
+        'Klasifikasi final',
+        'Catatan Akuntansi',
+        'Urutan di MENU',
+        'ID Draf (jangan diubah)',
+      ]);
+      // Baris 1: Perusahaan tak dikenal
+      ws.addRow([
+        1,
+        'UNKNOWN_CO',
+        'UX-01',
+        'Unit Perusahaan Asing',
+        'SUPPORTING',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        'Pakai',
+        null,
+        null,
+        null,
+        null,
+        null,
+        1,
+        'DRAFT-ERR-01',
+      ]);
+      // Baris 2: Kode DU-01 (bentrok dengan DRAFT-CN-01 yang sudah ada di database)
+      ws.addRow([
+        2,
+        'CN',
+        'DU-01',
+        'Unit Bentrok DB',
+        'SUPPORTING',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        'Pakai',
+        null,
+        null,
+        null,
+        null,
+        null,
+        2,
+        'DRAFT-DUP-01',
+      ]);
+      // Baris 3: Kode DU-99
+      ws.addRow([
+        3,
+        'CN',
+        'DU-99',
+        'Unit Ganda File 1',
+        'SUPPORTING',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        'Pakai',
+        null,
+        null,
+        null,
+        null,
+        null,
+        3,
+        'DRAFT-DUP-02',
+      ]);
+      // Baris 4: Kode DU-99 (ganda dalam file)
+      ws.addRow([
+        4,
+        'CN',
+        'DU-99',
+        'Unit Ganda File 2',
+        'SUPPORTING',
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        'Pakai',
+        null,
+        null,
+        null,
+        null,
+        null,
+        4,
+        'DRAFT-DUP-03',
+      ]);
+
+      const buffer = await wb.xlsx.writeBuffer();
+
+      // 1. Dry run melaporkan galat per baris
+      const dryRes = await request(app)
+        .post('/api/units/import?dry_run=true')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', buffer, 'unit_test_edge.xlsx');
+
+      expect(dryRes.status).toBe(200);
+      expect(dryRes.body.dry_run).toBe(true);
+      expect(dryRes.body.errors.length).toBeGreaterThanOrEqual(3);
+
+      const errCompany = dryRes.body.errors.find((e) => e.source_key === 'DRAFT-ERR-01');
+      expect(errCompany.error).toMatch(/tidak dikenal atau tidak terdaftar/i);
+
+      const errDbDup = dryRes.body.errors.find((e) => e.source_key === 'DRAFT-DUP-01');
+      expect(errDbDup.error).toMatch(/sudah digunakan oleh unit lain/i);
+
+      const errFileDup = dryRes.body.errors.find((e) => e.source_key === 'DRAFT-DUP-03');
+      expect(errFileDup.error).toMatch(/ganda di dalam berkas impor/i);
+
+      // 2. Real import melewati baris yang bermasalah alih-alih gagal total
+      const realRes = await request(app)
+        .post('/api/units/import?dry_run=false')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', buffer, 'unit_test_edge.xlsx');
+
+      expect(realRes.status).toBe(200);
+      expect(realRes.body.dry_run).toBe(false);
+      // Baris 3 (DRAFT-DUP-02) yang valid tersimpan, baris bermasalah dilewati
+      const savedUnit = await db.query("SELECT * FROM units WHERE source_key = 'DRAFT-DUP-02'");
+      expect(savedUnit.rows.length).toBe(1);
+
+      // Bersihkan
+      await db.query("DELETE FROM units WHERE source_key LIKE 'DRAFT-DUP%'");
+    });
+  });
+
+  describe('6. Validasi Berkas Unggah (Upload Security & Integrity)', () => {
+    it('Unggah berkas bukan .xlsx ditolak dengan status 400 dan pesan bahasa Indonesia', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const res = await request(app)
+        .post('/api/items/import')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', Buffer.from('teks biasa bukan excel'), 'daftar_barang.txt');
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/spreadsheet Excel \(\.xlsx\)/i);
+    });
+
+    it('Unggah berkas .xlsx korup/rusak ditolak dengan status 400 dan bukan 500', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const corruptedBuffer = Buffer.from('PK\x03\x04corrupted-excel-content-dummy');
+
+      const res = await request(app)
+        .post('/api/items/import')
+        .set('Cookie', akt.cookie)
+        .set('X-CSRF-Token', akt.csrfToken)
+        .attach('file', corruptedBuffer, 'corrupted_file.xlsx');
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/berkas excel rusak/i);
     });
   });
 });

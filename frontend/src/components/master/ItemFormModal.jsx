@@ -4,13 +4,19 @@ import { X, Loader2, Save } from 'lucide-react';
 import masterApi from '../../api/master.api';
 
 export default function ItemFormModal({ isOpen, onClose, item, coaList = [], onSuccess }) {
+  const initialPriceCn =
+    item?.prices?.find((p) => p.company_code === 'CN')?.price ?? item?.price_cn ?? 0;
+  const initialPriceCnh =
+    item?.prices?.find((p) => p.company_code === 'CNH')?.price ?? item?.price_cnh ?? 0;
+
   const [formData, setFormData] = useState(() => ({
     code: item?.code || '',
     product_code: item?.product_code || '',
     name: item?.name || '',
     group_name: item?.group_name || 'Umum',
     uom: item?.uom || 'Pcs',
-    price: item?.price || 0,
+    price_cn: initialPriceCn,
+    price_cnh: initialPriceCnh,
     coa_id: item?.coa_id || '',
     inventory_coa_id: item?.inventory_coa_id || '',
     is_active: item?.is_active !== undefined ? item.is_active : true,
@@ -28,7 +34,10 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], onS
     try {
       const payload = {
         ...formData,
-        price: Number(formData.price) || 0,
+        prices: [
+          { company_code: 'CN', period_year: 2027, price: Number(formData.price_cn) || 0 },
+          { company_code: 'CNH', period_year: 2027, price: Number(formData.price_cnh) || 0 },
+        ],
         coa_id: formData.coa_id ? Number(formData.coa_id) : null,
         inventory_coa_id: formData.inventory_coa_id ? Number(formData.inventory_coa_id) : null,
       };
@@ -108,7 +117,7 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], onS
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Golongan</label>
               <input
@@ -129,15 +138,29 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], onS
                 className="w-full text-xs"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 bg-slate-50/70 p-3 rounded-lg border border-slate-200">
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">HPP (Rupiah)</label>
+              <label className="text-xs font-semibold text-slate-700 mb-1 block">HPP CN (Rupiah)</label>
               <input
                 type="number"
                 min="0"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                value={formData.price_cn}
+                onChange={(e) => setFormData({ ...formData, price_cn: e.target.value })}
                 placeholder="0"
-                className="w-full text-xs"
+                className="w-full text-xs bg-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 mb-1 block">HPP CNH (Rupiah)</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.price_cnh}
+                onChange={(e) => setFormData({ ...formData, price_cnh: e.target.value })}
+                placeholder="0"
+                className="w-full text-xs bg-white"
               />
             </div>
           </div>

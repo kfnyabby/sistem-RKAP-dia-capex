@@ -2,21 +2,25 @@ const multer = require('multer');
 const masterImportService = require('../services/masterImport.service');
 const unitImportService = require('../services/unitImport.service');
 
-// Konfigurasi Multer (simpan di memori buffer)
+// Konfigurasi Multer (simpan di memori buffer, khusus .xlsx maksimal 15MB)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: { fileSize: 15 * 1024 * 1024 }, // Maksimal 15MB
   fileFilter: (req, file, cb) => {
-    if (
+    const isXlsxExt = file.originalname && file.originalname.toLowerCase().endsWith('.xlsx');
+    const isXlsxMime =
       file.mimetype ===
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-      file.originalname.endsWith('.xlsx') ||
-      file.originalname.endsWith('.xls')
-    ) {
+      file.mimetype === 'application/octet-stream';
+
+    if (isXlsxExt && isXlsxMime) {
       cb(null, true);
     } else {
-      cb(new Error('Format berkas harus berupa spreadsheet Excel (.xlsx)'));
+      const err = new Error('Format berkas harus berupa spreadsheet Excel (.xlsx)');
+      err.status = 400;
+      err.code = 'INVALID_FILE_TYPE';
+      cb(err);
     }
   },
 });
@@ -28,9 +32,17 @@ const importItems = async (req, res, next) => {
     }
 
     const dryRun = req.query.dry_run === 'true' || req.body.dry_run === 'true';
+    const companyCode = req.query.company_code || req.body.company_code || 'CN';
+    const periodYear =
+      req.query.period_year || req.body.period_year
+        ? parseInt(req.query.period_year || req.body.period_year, 10)
+        : 2027;
+
     const result = await masterImportService.importItems(req.file.buffer, req.file.originalname, {
       dry_run: dryRun,
       actorId: req.user.id,
+      company_code: companyCode,
+      period_year: periodYear,
     });
 
     res.json(result);

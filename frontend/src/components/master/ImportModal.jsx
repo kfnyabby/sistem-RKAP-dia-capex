@@ -6,6 +6,8 @@ import masterApi from '../../api/master.api';
 export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess }) {
   const [file, setFile] = useState(null);
   const [dryRun, setDryRun] = useState(true);
+  const [companyCode, setCompanyCode] = useState('CN');
+  const [periodYear, setPeriodYear] = useState(2027);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [result, setResult] = useState(null);
@@ -47,7 +49,10 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
     try {
       let res;
       if (isItems) {
-        res = await masterApi.importItems(file, dryRun);
+        res = await masterApi.importItems(file, dryRun, {
+          company_code: companyCode,
+          period_year: periodYear,
+        });
       } else if (isCoas) {
         res = await masterApi.importCoas(file, dryRun);
       } else if (isUnits) {
@@ -125,6 +130,36 @@ export default function ImportModal({ isOpen, onClose, type = 'items', onSuccess
               </p>
             )}
           </div>
+
+          {/* Opsi Target Perusahaan & Periode untuk Import Barang */}
+          {isItems && (
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Target Perusahaan</label>
+                <select
+                  value={companyCode}
+                  onChange={(e) => setCompanyCode(e.target.value)}
+                  className="w-full text-xs rounded border-slate-300 bg-white py-1.5 px-2"
+                >
+                  <option value="CN">PT Cipta Nirmala (CN)</option>
+                  <option value="CNH">PT Cipta Nirmala Husada (CNH)</option>
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">HPP hanya akan disimpan untuk perusahaan terpilih.</p>
+              </div>
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Tahun Periode</label>
+                <input
+                  type="number"
+                  value={periodYear}
+                  onChange={(e) => setPeriodYear(Number(e.target.value))}
+                  min="2020"
+                  max="2035"
+                  className="w-full text-xs rounded border-slate-300 bg-white py-1.5 px-2"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">Periode harus sudah terdaftar di sistem.</p>
+              </div>
+            </div>
+          )}
 
           {/* Area File Input */}
           <div className="border-2 border-dashed border-slate-200 hover:border-primary-400 rounded-xl p-6 text-center transition-colors bg-slate-50/40">

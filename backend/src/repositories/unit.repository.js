@@ -124,7 +124,12 @@ const findOrCreateOrgGroup = async (
   `;
   const checkRes = await client.query(checkSql, [company_id, cleanName]);
   if (checkRes.rows.length > 0) {
-    return checkRes.rows[0].id;
+    const existingId = checkRes.rows[0].id;
+    await client.query(
+      'UPDATE org_groups SET type = $2, parent_id = COALESCE($3, parent_id), updated_at = NOW() WHERE id = $1',
+      [existingId, type, parent_id]
+    );
+    return existingId;
   }
 
   // Buat baru

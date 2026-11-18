@@ -20,18 +20,7 @@ const getQualityReport = async () => {
           created_at: latestImport.created_at,
           user_name: latestImport.user_name || 'Akuntansi',
         }
-      : {
-          filename: 'Master_Barang_Logistik.xlsx',
-          total_read: 3204,
-          matched_existing: 3080,
-          new_items: 124,
-          missing_coa: 0,
-          coa_changed: 35,
-          hpp_zero: 52,
-          unknown_coa: 0,
-          created_at: new Date().toISOString(),
-          user_name: 'Akuntansi',
-        },
+      : null,
     live_metrics: liveMetrics,
     price_warning: {
       message:

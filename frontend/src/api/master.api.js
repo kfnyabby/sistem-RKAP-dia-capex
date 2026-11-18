@@ -32,10 +32,12 @@ export const masterApi = {
     return res.data;
   },
 
-  importItems: async (file, dry_run = false) => {
+  importItems: async (file, dry_run = false, options = {}) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('dry_run', dry_run);
+    if (options.company_code) formData.append('company_code', options.company_code);
+    if (options.period_year) formData.append('period_year', options.period_year);
     const res = await api.post('/items/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
