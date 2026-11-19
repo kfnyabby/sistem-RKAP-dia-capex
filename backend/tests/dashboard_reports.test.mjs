@@ -56,6 +56,8 @@ describe('Dashboard & Reporting Test Suite (Fase 7)', () => {
     await db.query("DELETE FROM items WHERE code IN ('ITM-TEST-01', 'ITM-TEST-02')");
     await db.query("DELETE FROM investment_categories WHERE name = 'Peralatan Medis Uji'");
     await db.query("DELETE FROM coas WHERE code IN ('5.8.3.99', '4.1.7.99', '5.4.2.99')");
+    await db.query("UPDATE settings SET value = '80'::jsonb WHERE key = 'warning_percent'");
+    await db.query("UPDATE settings SET value = '100'::jsonb WHERE key = 'critical_percent'");
 
     // 1. Setup Pengguna Uji Mandiri (Terisolasi dari tes lain)
     const baseHashRes = await db.query("SELECT password_hash FROM users WHERE id = 1 LIMIT 1");

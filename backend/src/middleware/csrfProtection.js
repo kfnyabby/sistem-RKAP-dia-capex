@@ -18,7 +18,9 @@ const csrfProtection = (req, res, next) => {
 
   if (!tokenFromHeader || !sessionToken) {
     return res.status(403).json({
+      success: false,
       message: 'Invalid or missing CSRF token',
+      code: 'CSRF_TOKEN_MISSING',
     });
   }
 
@@ -31,7 +33,9 @@ const csrfProtection = (req, res, next) => {
     !crypto.timingSafeEqual(headerBuf, sessionBuf)
   ) {
     return res.status(403).json({
+      success: false,
       message: 'Invalid or missing CSRF token',
+      code: 'CSRF_TOKEN_INVALID',
     });
   }
 

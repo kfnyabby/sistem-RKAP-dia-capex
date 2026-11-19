@@ -1,11 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const db = require('../db');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const { csrfProtection } = require('./middleware/csrfProtection');
+const { globalRateLimiter } = require('./middleware/rateLimiter');
 
 // Validasi variabel lingkungan sesi wajib ada
 if (!process.env.SESSION_SECRET) {
@@ -18,17 +20,42 @@ const app = express();
 // Trust proxy if behind reverse proxy
 app.set('trust proxy', 1);
 
-// Middleware CORS
+// Security Headers HTTP via Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Menghindari bentrok CSP pada aset SPA frontend/dev
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// Middleware CORS Dinamis dari Variabel Lingkungan
+const defaultOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : defaultOrigins;
+
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: (origin, callback) => {
+      // Izinkan request tanpa origin (seperti Supertest, curl, server-to-server) atau yang ada di daftar whitelist
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      const err = new Error(`Akses diblokir oleh kebijakan CORS untuk origin: ${origin}`);
+      err.status = 403;
+      err.code = 'CORS_NOT_ALLOWED';
+      return callback(err);
+    },
     credentials: true,
   })
 );
 
 // Body Parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Global Rate Limiting untuk semua rute /api
+app.use('/api', globalRateLimiter);
 
 // Session Store PostgreSQL
 app.use(

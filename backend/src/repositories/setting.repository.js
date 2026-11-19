@@ -1,6 +1,16 @@
 const db = require('../../db');
 
 /**
+ * Mengambil semua setting aktif
+ */
+const getAllSettings = async (client = db) => {
+  const res = await client.query(
+    'SELECT key, value, description, updated_at FROM settings ORDER BY key ASC'
+  );
+  return res.rows;
+};
+
+/**
  * Mengambil nilai setting berdasarkan key.
  * Mengembalikan defaultValue bila key tidak ditemukan.
  */
@@ -24,13 +34,14 @@ const setSetting = async (key, value, description = null, userId = null, client 
        value = EXCLUDED.value, 
        description = COALESCE(EXCLUDED.description, settings.description), 
        updated_at = NOW()
-     RETURNING *`,
+     RETURNING key, value, description, updated_at`,
     [key, JSON.stringify(value), description, userId]
   );
   return res.rows[0];
 };
 
 module.exports = {
+  getAllSettings,
   getSetting,
   setSetting,
 };

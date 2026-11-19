@@ -13,13 +13,17 @@ const submissionAccessRoutes = require('./submissionAccess.routes');
 const notificationRoutes = require('./notification.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const reportRoutes = require('./report.routes');
+const auditLogRoutes = require('./auditLog.routes');
+const settingRoutes = require('./setting.routes');
+const docsRoutes = require('./docs.routes');
 const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 
 const router = express.Router();
 
-// Modul Health Check (starter - tanpa auth)
+// Modul Health Check & OpenAPI Docs (publik - tanpa auth)
 router.use('/', healthRoutes);
+router.use('/docs', docsRoutes);
 
 // Modul Auth & Users
 router.use('/auth', authRoutes);
@@ -45,6 +49,10 @@ router.use('/', realizationRoutes);
 // Modul Dashboard & Laporan (Fase 7)
 router.use('/', dashboardRoutes);
 router.use('/', reportRoutes);
+
+// Modul Audit Logs & Pengaturan Sistem (Fase 8)
+router.use('/audit-logs', auditLogRoutes);
+router.use('/settings', settingRoutes);
 
 // Endpoint uji otorisasi unit (untuk verifikasi requireUnitAccess)
 router.get('/test-unit-access/:unit_id', requireAuth, requireUnitAccess, (req, res) => {

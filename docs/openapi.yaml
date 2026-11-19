@@ -1,0 +1,344 @@
+openapi: 3.0.3
+info:
+  title: API Sistem RKAP (DIA CAPEX) CN dan CNH
+  version: 1.0.0
+  description: |
+    Spesifikasi resmi Kontrak API Sistem Rencana Kerja dan Anggaran Perusahaan (RKAP) 
+    berbasis DIA CAPEX untuk PT Cipta Nirmala (CN) dan PT Cipta Nirmala Husada (CNH).
+    Dokumen ini berfungsi sebagai sumber kebenaran kontrak API pengganti dokumen PRD PDF lama.
+servers:
+  - url: http://localhost:5000/api
+    description: Lingkungan Pengembangan Lokal
+  - url: https://rkap.ciptanirmala.com/api
+    description: Lingkungan Produksi
+
+tags:
+  - name: Auth & Profil
+    description: Autentikasi sesi, perlindungan CSRF, dan manajemen profil pengguna
+  - name: Manajemen Pengguna
+    description: Pengelolaan akun pengguna, peran, dan wewenang akses unit kerja
+  - name: Master Data
+    description: Master barang logistik, harga per perusahaan/periode, dan import data
+  - name: Master Unit & COA
+    description: Master unit kerja, kelompok instalasi, dan bagan akun standar (COA)
+  - name: Periode & Akses Pengajuan
+    description: Pengaturan jadwal siklus anggaran dan kontrol akses pengisian unit
+  - name: Entry Anggaran Biaya
+    description: Pengisian dan penyimpanan otomatis baris anggaran operasional (OPEX)
+  - name: Permintaan Barang Baru
+    description: Pengajuan barang baru non-master oleh unit kerja dan penentuan COA oleh Akuntansi
+  - name: Entry Anggaran Investasi
+    description: Belanja modal (CAPEX), kalkulasi penyusutan, batas kapitalisasi, dan konsolidasi PC
+  - name: Alur Persetujuan (Workflow)
+    description: Pengajuan, telaah berjenjang (Maker-Checker), pengembalian, dan finalisasi
+  - name: Notifikasi
+    description: Notifikasi dalam aplikasi dan lonceng pengingat batas waktu
+  - name: Realisasi Buku Besar
+    description: Unggah streaming jurnal Excel, pemetaan unit [9xxx], dan agregasi DEBET-KREDIT
+  - name: Dashboard Monitoring
+    description: Pemantauan capaian realisasi anggaran, progres pengisian, dan status ambang
+  - name: Laporan & Konsolidasi
+    description: Rekapitulasi biaya, ringkasan belanja modal, matriks unit x COA, dan ekspor Excel
+  - name: Jejak Audit
+    description: Riwayat catatan mutasi data untuk transparansi kepatuhan dan tata kelola
+  - name: Pengaturan Sistem
+    description: Konfigurasi dinamis ambang batas, persentase peringatan, dan kontak akuntansi
+
+paths:
+  # ============================================================================
+  # AUTH & PROFILE
+  # ============================================================================
+  /auth/csrf:
+    get:
+      tags: [Auth & Profil]
+      summary: Dapatkan Token CSRF
+      description: Menghasilkan token CSRF untuk digunakan pada header X-CSRF-Token di seluruh request mutasi.
+      responses:
+        '200':
+          description: Berhasil mendapatkan token CSRF
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrf_token:
+                    type: string
+                    example: a1b2c3d4e5f6g7h8...
+
+  /auth/login:
+    post:
+      tags: [Auth & Profil]
+      summary: Masuk Sesi Pengguna
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: dya@ptcn.id
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Login berhasil, cookie sesi dibuat dan token CSRF baru dikembalikan
+        '401':
+          description: Kredensial tidak valid
+        '429':
+          description: Batas laju login terlampaui (maks 5 percobaan gagal per 15 menit)
+
+  /auth/logout:
+    post:
+      tags: [Auth & Profil]
+      summary: Keluar Sesi Pengguna
+      responses:
+        '200':
+          description: Sesi berhasil dicabut
+
+  /auth/me:
+    get:
+      tags: [Auth & Profil]
+      summary: Informasi Profil Pengguna Aktif
+      responses:
+        '200':
+          description: Profil dan daftar unit kerja yang dapat diakses
+
+  /auth/password:
+    put:
+      tags: [Auth & Profil]
+      summary: Ganti Kata Sandi Mandiri
+      responses:
+        '200':
+          description: Kata sandi berhasil diperbarui dan sesi lain dicabut
+
+  # ============================================================================
+  # DASHBOARD & LAPORAN
+  # ============================================================================
+  /dashboard/summary:
+    get:
+      tags: [Dashboard Monitoring]
+      summary: Ringkasan RKAP, Realisasi & Ambang Pemakaian
+      parameters:
+        - name: company_id
+          in: query
+          schema: { type: integer }
+        - name: period_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Total RKAP biaya & investasi, pemakaian realisasi, persentase, dan ambang batas
+
+  /dashboard/progress:
+    get:
+      tags: [Dashboard Monitoring]
+      summary: Distribusi Status Unit & Unit Terlambat
+      parameters:
+        - name: company_id
+          in: query
+          schema: { type: integer }
+        - name: period_id
+          in: query
+          schema: { type: integer }
+        - name: type
+          in: query
+          schema: { type: string, enum: [BIAYA, INVESTASI] }
+      responses:
+        '200':
+          description: Jumlah unit per status dan daftar unit terlambat
+
+  /dashboard/budget-vs-realization:
+    get:
+      tags: [Dashboard Monitoring]
+      summary: Drill-down Anggaran vs Realisasi
+      parameters:
+        - name: group_by
+          in: query
+          required: true
+          schema: { type: string, enum: [coa, unit, item] }
+      responses:
+        '200':
+          description: Rincian baris anggaran vs realisasi beserta status level ambang
+
+  /reports/expense-by-coa:
+    get:
+      tags: [Laporan & Konsolidasi]
+      summary: Rekapitulasi Anggaran Biaya per Akun COA
+      responses:
+        '200':
+          description: Daftar anggaran biaya dikelompokkan per COA
+
+  /reports/investment-summary:
+    get:
+      tags: [Laporan & Konsolidasi]
+      summary: Ringkasan Anggaran Investasi & Capex
+      parameters:
+        - name: group_by
+          in: query
+          schema: { type: string, enum: [category, month] }
+      responses:
+        '200':
+          description: Ringkasan belanja modal per kategori atau per bulan rencana
+
+  /reports/consolidated:
+    get:
+      tags: [Laporan & Konsolidasi]
+      summary: Rekap Konsolidasi Gabungan CN & CNH
+      responses:
+        '200':
+          description: Rekap hierarkis dengan subtotal unit, subtotal perusahaan, dan grand total
+
+  /reports/matrix:
+    get:
+      tags: [Laporan & Konsolidasi]
+      summary: Matriks Unit x COA
+      parameters:
+        - name: period_year
+          in: query
+          schema: { type: integer, default: 2027 }
+        - name: hide_empty
+          in: query
+          schema: { type: boolean, default: true }
+      responses:
+        '200':
+          description: Matriks dua dimensi unit x akun COA terkelompok
+
+  /reports/export:
+    get:
+      tags: [Laporan & Konsolidasi]
+      summary: Ekspor Laporan Lembar Sebar Excel (.xlsx)
+      parameters:
+        - name: report
+          in: query
+          required: true
+          schema: { type: string, enum: [consolidated, matrix, expense-by-coa, investment-summary, budget-vs-realization] }
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [xlsx, pdf] }
+      responses:
+        '200':
+          description: File Excel biner (.xlsx)
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '422':
+          description: Format PDF ditunda (PDF_EXPORT_DEFERRED)
+
+  # ============================================================================
+  # AUDIT LOGS & SETTINGS (FASE 8)
+  # ============================================================================
+  /audit-logs:
+    get:
+      tags: [Jejak Audit]
+      summary: Daftar Jejak Audit Sistem
+      description: Akuntansi dapat melihat semua log. Manager dibatasi sebatas unit cakupannya. PIC ditolak (403).
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: entity
+          in: query
+          schema: { type: string }
+        - name: unit_id
+          in: query
+          schema: { type: integer }
+        - name: start_date
+          in: query
+          schema: { type: string, format: date-time }
+        - name: end_date
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Daftar baris audit dan metadata paginasi
+        '403':
+          description: Role tidak berwenang atau unit di luar wewenang Manager
+
+  /settings:
+    get:
+      tags: [Pengaturan Sistem]
+      summary: Baca Seluruh Pengaturan Aktif
+      description: Khusus Akuntansi. Mengembalikan seluruh konfigurasi dinamis sistem RKAP.
+      responses:
+        '200':
+          description: Seluruh konfigurasi sistem aktif
+        '403':
+          description: PIC dan Manager ditolak
+    put:
+      tags: [Pengaturan Sistem]
+      summary: Perbarui Nilai Pengaturan Sistem
+      description: Khusus Akuntansi. Nilai divalidasi dengan Zod dan perubahan dicatat dalam jejak audit secara atomis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                investment_threshold:
+                  type: number
+                  example: 5000000
+                investment_threshold_basis:
+                  type: string
+                  enum: [unit_price, line_total]
+                  example: unit_price
+                investment_text_max_length:
+                  type: integer
+                  example: 300
+                warning_percent:
+                  type: number
+                  example: 80
+                critical_percent:
+                  type: number
+                  example: 100
+                investment_asset_coas:
+                  type: array
+                  items: { type: string }
+                  example: ["1.2.1.1.4", "1.2.1.1.6"]
+                auto_reopen_on_return:
+                  type: boolean
+                  example: true
+                auto_close_on_deadline:
+                  type: boolean
+                  example: true
+                reminder_days:
+                  type: array
+                  items: { type: integer }
+                  example: [3, 1]
+                accounting_contact:
+                  type: string
+                  example: Bagian Akuntansi (ext. 102)
+      responses:
+        '200':
+          description: Pengaturan berhasil diperbarui
+        '403':
+          description: Hanya Akuntansi yang berwenang
+        '422':
+          description: Nilai tidak lolos validasi skema
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+security:
+  - sessionCookie: []
+    csrfToken: []
