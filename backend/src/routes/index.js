@@ -8,6 +8,9 @@ const budgetRoutes = require('./budget.routes');
 const newItemRequestRoutes = require('./newItemRequest.routes');
 const investmentRoutes = require('./investment.routes');
 const realizationRoutes = require('./realization.routes');
+const workflowRoutes = require('./workflow.routes');
+const submissionAccessRoutes = require('./submissionAccess.routes');
+const notificationRoutes = require('./notification.routes');
 const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 
@@ -23,8 +26,13 @@ router.use('/users', userRoutes);
 // Modul Master Data (Fase 2)
 router.use('/', masterRoutes);
 
-// Modul Periode & Dokumen Anggaran (Fase 3, 3b & 4)
+// Modul Periode, Workflow Approval, & Submission Access (Fase 5)
 router.use('/', periodRoutes);
+router.use('/', workflowRoutes);
+router.use('/', submissionAccessRoutes);
+router.use('/', notificationRoutes);
+
+// Modul Dokumen Anggaran & Entry (Fase 3, 3b & 4)
 router.use('/', budgetRoutes);
 router.use('/', newItemRequestRoutes);
 router.use('/', investmentRoutes);

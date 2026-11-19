@@ -1,0 +1,190 @@
+### ==============================================================================
+### FASE 5: REST API CLIENT (WORKFLOW APPROVAL, SUBMISSION ACCESS & NOTIFICATIONS)
+### Format: VS Code REST Client
+### ==============================================================================
+
+@baseUrl = http://localhost:5000/api
+
+### 1. Ambil Token CSRF
+# @name getCsrf
+GET {{baseUrl}}/auth/csrf
+Content-Type: application/json
+
+###
+@csrfToken = {{getCsrf.response.body.csrf_token}}
+
+### 2. Login sebagai PIC Unit (Rina)
+# @name loginPIC
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "email": "rina@ptcn.id",
+  "password": "password123"
+}
+
+### 3. Cek Status Akses Efektif Dokumen Anggaran (BR-10, BR-12)
+GET {{baseUrl}}/budget-docs/1/access
+Content-Type: application/json
+
+### 4. Ajukan Dokumen Anggaran ke Manager (FR-W1: DRAFT/DIKEMBALIKAN -> DIAJUKAN)
+POST {{baseUrl}}/budget-docs/1/submit
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+### 5. Lihat Riwayat Status Dokumen Anggaran
+GET {{baseUrl}}/budget-docs/1/history
+Content-Type: application/json
+
+### 6. Login sebagai Manager Unit (Budi)
+# @name loginManager
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "email": "budi@ptcn.id",
+  "password": "password123"
+}
+
+### 7. Ambil Antrian Telaah Dokumen (Review Queue Manager)
+GET {{baseUrl}}/budget-docs/review-queue?type=BIAYA
+Content-Type: application/json
+
+### 8. Tambah Komentar pada Baris Dokumen (FR-W5)
+# @name addComment
+POST {{baseUrl}}/budget-docs/1/line-comments
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "line_id": 1,
+  "line_type": "EXPENSE",
+  "comment": "Mohon kurangi kuantitas ATK ini dari 50 menjadi 30 pack sesuai arahan penghematan."
+}
+
+###
+@commentId = {{addComment.response.body.comment_id}}
+
+### 9. Ambil Seluruh Komentar Baris pada Dokumen
+GET {{baseUrl}}/budget-docs/1/line-comments
+Content-Type: application/json
+
+### 10. Hapus Komentar Baris Milik Sendiri
+DELETE {{baseUrl}}/line-comments/{{commentId}}
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+### 11. Setujui Dokumen Anggaran (FR-W2, BR-07 Maker-Checker Guard)
+POST {{baseUrl}}/budget-docs/1/approve
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+### 12. Kembalikan Dokumen dengan Catatan Wajib (BR-08, BR-14 Auto-Return)
+POST {{baseUrl}}/budget-docs/1/return
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "note": "Kuantitas anggaran biaya masih melebihi plafon target unit kerja. Mohon disesuaikan kembali."
+}
+
+### 13. Login sebagai Tim Akuntansi (Dya)
+# @name loginAkuntansi
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "email": "dya@ptcn.id",
+  "password": "password123"
+}
+
+### 14. Ambil Antrian Telaah Dokumen Tingkat Akuntansi (Semua Unit)
+GET {{baseUrl}}/budget-docs/review-queue?status=DISETUJUI
+Content-Type: application/json
+
+### 15. Finalisasi Dokumen Tunggal (FINAL)
+POST {{baseUrl}}/budget-docs/1/finalize
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+### 16. Finalisasi Dokumen Secara Massal (Bulk Finalize)
+POST {{baseUrl}}/budget-docs/finalize-bulk
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "doc_ids": [1, 2]
+}
+
+### 17. Buka Kembali Dokumen FINAL dengan Alasan Wajib (BR-06)
+POST {{baseUrl}}/budget-docs/1/reopen
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "reason": "Penyesuaian target RKAP korporat hasil arahan Direksi untuk tahun berjalan."
+}
+
+### 18. Perbarui Batas Waktu Periode (FR-P5)
+POST {{baseUrl}}/periods/1/deadlines
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "fill_deadline": "2026-11-25T23:59:59.000Z",
+  "review_deadline": "2026-12-05T23:59:59.000Z"
+}
+
+### 19. Buka / Tutup Pengajuan Tingkat Periode (FR-P6, BR-12 Alasan Wajib saat Buka)
+POST {{baseUrl}}/periods/1/toggle-submission
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "state": "BUKA",
+  "reason": "Pembukaan masa perpanjangan pengisian revisi anggaran unit kerja."
+}
+
+### 20. Ambil Matriks Status Akses Unit Kerja per Periode (FR-P7)
+GET {{baseUrl}}/periods/1/unit-access
+Content-Type: application/json
+
+### 21. Override Akses Pengajuan Unit Spesifik (FR-P8, BR-12)
+POST {{baseUrl}}/periods/1/units/1/submission-access
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "doc_type": "BIAYA",
+  "state": "BUKA",
+  "effective_deadline": "2026-11-30T23:59:59.000Z",
+  "reason": "Pemberian dispensasi pengisian perbaikan anggaran unit Rawat Inap."
+}
+
+### 22. Override Akses Pengajuan Massal (Bulk Override)
+POST {{baseUrl}}/periods/1/bulk-submission-access
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "unit_ids": [1, 2],
+  "doc_type": "ALL",
+  "state": "TUTUP"
+}
+
+### 23. Ambil Daftar Notifikasi Pengguna Terkini (FR-P9)
+GET {{baseUrl}}/notifications
+Content-Type: application/json
+
+### 24. Tandai Satu Notifikasi Sudah Dibaca
+PATCH {{baseUrl}}/notifications/1/read
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+### 25. Tandai Seluruh Notifikasi Sudah Dibaca
+POST {{baseUrl}}/notifications/read-all
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}

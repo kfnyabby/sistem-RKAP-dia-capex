@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import PenentuanCoaSection from '../components/proses/PenentuanCoaSection';
+import ValidationQueueSection from '../components/proses/ValidationQueueSection';
 
 export default function ProsesPage() {
   const { user } = useAuth();
@@ -121,6 +122,8 @@ export default function ProsesPage() {
       {/* Main Process Content */}
       {activeProcess === 'penentuan-coa' && user?.role === 'akuntansi' ? (
         <PenentuanCoaSection />
+      ) : activeProcess === 'validasi' || activeProcess === 'finalisasi' ? (
+        <ValidationQueueSection />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center">
           <div className="max-w-md mx-auto space-y-3">

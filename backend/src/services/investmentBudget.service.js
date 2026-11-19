@@ -4,6 +4,7 @@ const budgetDocRepository = require('../repositories/budgetDoc.repository');
 const investmentCategoryRepository = require('../repositories/investmentCategory.repository');
 const settingRepository = require('../repositories/setting.repository');
 const AuditService = require('./audit.service');
+const submissionAccessService = require('./submissionAccess.service');
 
 function formatRupiah(num) {
   return new Intl.NumberFormat('id-ID').format(num);
@@ -35,8 +36,11 @@ const createInvestmentLine = async (docId, payload, user) => {
     throw error;
   }
 
-  if (doc.status !== 'DRAFT') {
-    const error = new Error('Baris investasi hanya dapat ditambahkan saat dokumen berstatus DRAFT');
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  await submissionAccessService.assertSubmissionOpen(doc);
+
+  if (doc.status !== 'DRAFT' && doc.status !== 'DIKEMBALIKAN') {
+    const error = new Error('Baris investasi hanya dapat ditambahkan saat dokumen berstatus DRAFT atau DIKEMBALIKAN');
     error.statusCode = 400;
     throw error;
   }
@@ -202,7 +206,13 @@ const updateInvestmentLine = async (lineId, payload, user) => {
     throw error;
   }
 
-  if (currentLine.doc_status !== 'DRAFT') {
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  const docForAccess = await budgetDocRepository.findRawById(currentLine.doc_id);
+  if (docForAccess) {
+    await submissionAccessService.assertSubmissionOpen(docForAccess);
+  }
+
+  if (currentLine.doc_status !== 'DRAFT' && currentLine.doc_status !== 'DIKEMBALIKAN') {
     const error = new Error(
       `Baris investasi tidak dapat diubah karena dokumen berstatus ${currentLine.doc_status}`
     );
@@ -396,7 +406,13 @@ const deleteInvestmentLine = async (lineId, user) => {
     throw error;
   }
 
-  if (currentLine.doc_status !== 'DRAFT') {
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  const docForAccessDelete = await budgetDocRepository.findRawById(currentLine.doc_id);
+  if (docForAccessDelete) {
+    await submissionAccessService.assertSubmissionOpen(docForAccessDelete);
+  }
+
+  if (currentLine.doc_status !== 'DRAFT' && currentLine.doc_status !== 'DIKEMBALIKAN') {
     const error = new Error(
       `Baris investasi tidak dapat dihapus karena dokumen berstatus ${currentLine.doc_status}`
     );

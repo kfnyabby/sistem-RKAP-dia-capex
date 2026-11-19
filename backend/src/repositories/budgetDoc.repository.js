@@ -363,14 +363,93 @@ const deleteById = async (id, client = db) => {
   await client.query('DELETE FROM budget_docs WHERE id = $1', [parseInt(id, 10)]);
 };
 
+const findRawById = async (id, client = null) => {
+  const queryExecutor = client || db;
+  const docId = parseInt(id, 10);
+  if (isNaN(docId)) return null;
+
+  const query = `
+    SELECT 
+      b.*,
+      b.id AS doc_id,
+      p.year AS period_year,
+      p.status AS period_status,
+      p.fill_deadline,
+      p.review_deadline,
+      p.lock_date,
+      p.submission_state,
+      u.code AS unit_code,
+      u.name AS unit_name,
+      u.company_id,
+      c.code AS company_code,
+      c.name AS company_name
+    FROM budget_docs b
+    JOIN units u ON u.id = b.unit_id
+    JOIN companies c ON c.id = u.company_id
+    JOIN periods p ON p.id = b.period_id
+    WHERE b.id = $1
+  `;
+  const res = await queryExecutor.query(query, [docId]);
+  const row = res.rows[0];
+  if (!row) return null;
+  return {
+    ...row,
+    total_amount: parseInt(row.total_amount, 10),
+  };
+};
+
+const updateStatus = async (docId, newStatus, submittedBy = null, client = null) => {
+  const queryExecutor = client || db;
+  let query;
+  let params;
+
+  if (newStatus === 'DIAJUKAN') {
+    query = `
+      UPDATE budget_docs 
+      SET status = $1, submitted_by = $2, submitted_at = NOW(), updated_at = NOW()
+      WHERE id = $3 
+      RETURNING *
+    `;
+    params = [newStatus, submittedBy, docId];
+  } else {
+    query = `
+      UPDATE budget_docs 
+      SET status = $1, updated_at = NOW() 
+      WHERE id = $2 
+      RETURNING *
+    `;
+    params = [newStatus, docId];
+  }
+
+  const res = await queryExecutor.query(query, params);
+  return res.rows[0];
+};
+
+const finalizeBulk = async (docIds, client = null) => {
+  if (!docIds || docIds.length === 0) return [];
+  const queryExecutor = client || db;
+
+  const query = `
+    UPDATE budget_docs
+    SET status = 'FINAL', updated_at = NOW()
+    WHERE id = ANY($1::int[]) AND status = 'DISETUJUI'
+    RETURNING id, unit_id, period_id, type, status
+  `;
+  const res = await queryExecutor.query(query, [docIds]);
+  return res.rows;
+};
+
 module.exports = {
   getAccessibleUnitIds,
   findAll,
   findById,
+  findRawById,
   findByUnitPeriodType,
   getTotalsByCoa,
   getInvestmentSummary,
   create,
   recalculateTotal,
   deleteById,
+  updateStatus,
+  finalizeBulk,
 };

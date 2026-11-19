@@ -12,11 +12,14 @@ import {
   CheckCircle2,
   X,
   Laptop,
+  Send,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { budgetApi } from '../api/budget.api';
 import { masterApi } from '../api/master.api';
 import { investmentApi } from '../api/investment.api';
+import { submissionAccessApi } from '../api/submissionAccess.api';
+import { workflowApi } from '../api/workflow.api';
 import NewItemRequestsSection from '../components/entry/NewItemRequestsSection';
 import InvestmentForm from '../components/entry/InvestmentForm';
 import InvestmentTable from '../components/entry/InvestmentTable';
@@ -78,6 +81,10 @@ export default function EntryPage() {
   // Status Perbarui Harga Master (refresh-prices)
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
+
+  // Status Akses Efektif Dokumen & Alur Approval (Fase 5)
+  const [docAccess, setDocAccess] = useState(null);
+  const [submittingDoc, setSubmittingDoc] = useState(false);
 
   // Antrean debounce simpan otomatis
   const debounceTimerRef = useRef(null);
@@ -315,6 +322,28 @@ export default function EntryPage() {
     };
   }, [currentDoc?.id, activeTab, searchQuery, selectedGroupId, selectedCoaId, onlyFilled, refreshLinesCounter]);
 
+  // Muat status akses pengajuan efektif dokumen (Fase 5 - BR-10)
+  useEffect(() => {
+    let isMounted = true;
+    if (!currentDoc?.id) {
+      setDocAccess(null);
+      return;
+    }
+
+    submissionAccessApi
+      .getDocAccess(currentDoc.id)
+      .then((res) => {
+        if (isMounted) setDocAccess(res);
+      })
+      .catch((err) => {
+        console.error('Gagal mengambil status akses dokumen:', err.message);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentDoc?.id, refreshLinesCounter]);
+
   // 4. Mekanisme Eksekusi Simpan Otomatis (Debounced Auto-Save)
   const flushPendingUpdates = async () => {
     const docId = currentDocRef.current?.id;
@@ -456,6 +485,40 @@ export default function EntryPage() {
     }
   };
 
+  // Handler Ajukan Dokumen ke Manager (Fase 5 - FR-W1)
+  const handleSubmitDoc = async () => {
+    if (!currentDoc?.id || submittingDoc) return;
+    const docLabel = activeTab === 'investasi' ? 'Investasi' : 'Biaya';
+    if (
+      !window.confirm(
+        `Ajukan dokumen anggaran ${docLabel} unit ini ke Manager untuk validasi? Status dokumen akan menjadi DIAJUKAN.`
+      )
+    ) {
+      return;
+    }
+    setSubmittingDoc(true);
+    try {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (pendingUpdatesRef.current.size > 0) {
+        await flushPendingUpdates();
+      }
+      const res = await workflowApi.submitDoc(currentDoc.id);
+      alert('Dokumen anggaran berhasil diajukan untuk validasi');
+      setCurrentDoc((prev) => ({
+        ...prev,
+        status: 'DIAJUKAN',
+        submitted_by: res.data?.submitted_by,
+      }));
+      setRefreshLinesCounter((c) => c + 1);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal mengajukan dokumen anggaran');
+    } finally {
+      setSubmittingDoc(false);
+    }
+  };
+
   // 5. Modal Tambah dari Master
   const openAddMasterModal = async () => {
     if (!currentDoc?.id) return;
@@ -530,6 +593,11 @@ export default function EntryPage() {
     (u) => String(u.id || u.unit_id) === String(selectedUnitId)
   );
 
+  // Status Akses Pengajuan Efektif (Fase 5 - BR-10, BR-12, BR-13)
+  const isSubmissionClosed = docAccess && !docAccess.is_open;
+  const isDocDraft = currentDoc && (currentDoc.status === 'DRAFT' || currentDoc.status === 'DIKEMBALIKAN');
+  const isReadOnly = isSubmissionClosed || !isDocDraft;
+
   return (
     <div className="space-y-4">
       {/* 1. Header & Chip Informasi */}
@@ -537,10 +605,12 @@ export default function EntryPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[#1F2233] flex items-center gap-2">
             <FileEdit className="w-5 h-5 text-[#3D4E9C]" />
-            Entry · Anggaran Biaya
+            Entry · Anggaran {activeTab === 'investasi' ? 'Investasi' : 'Biaya'}
           </h1>
           <p className="text-xs text-[#5E6070] mt-0.5">
-            Pengisian Qty RKAP per barang logistik dengan kalkulasi subtotal per COA otomatis.
+            {activeTab === 'investasi'
+              ? 'Pengisian anggaran belanja modal / aset tetap (Capex) unit kerja.'
+              : 'Pengisian Qty RKAP per barang logistik dengan kalkulasi subtotal per COA otomatis.'}
           </p>
         </div>
 
@@ -551,67 +621,108 @@ export default function EntryPage() {
             </span>
           )}
           {currentDoc && (
-            <span className="chip ok">
+            <span
+              className={`chip ${
+                currentDoc.status === 'FINAL' || currentDoc.status === 'DISETUJUI'
+                  ? 'ok'
+                  : currentDoc.status === 'DIKEMBALIKAN'
+                  ? 'bd'
+                  : currentDoc.status === 'DIAJUKAN'
+                  ? 'wn'
+                  : 'ok'
+              }`}
+            >
               Status: {currentDoc.status}
             </span>
           )}
-        </div>
-      </div>
-
-      {/* 2. Banner Informasi Status Pengisian (Mockup style) */}
-      <div className="rounded-lg border border-[#9ACDAA] bg-[#DDF1E4] px-4 py-3 text-sm text-[#14532D] flex items-center justify-between gap-3 shadow-2xs">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-[#14532D]" />
-          <span>
-            Pengajuan dibuka. Deadline pengisian:{' '}
-            <b>
-              {(() => {
-                if (!selectedPeriodObj?.fill_deadline) return '15 Nov 2026';
-                try {
-                  const d = new Date(selectedPeriodObj.fill_deadline);
-                  if (isNaN(d.getTime())) return '15 Nov 2026';
-                  return d.toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  });
-                } catch {
-                  return '15 Nov 2026';
-                }
-              })()}
-            </b>
-            . Semua perubahan tersimpan otomatis.
-          </span>
-        </div>
-
-        {/* Chip Indikator Simpan Otomatis di pojok banner */}
-        <div className="shrink-0 flex items-center gap-2">
-          {saveStatus === 'saving' && (
-            <span className="chip wn flex items-center gap-1.5 animate-pulse">
-              <Clock className="w-3.5 h-3.5" />
-              Menyimpan perubahan...
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="chip ok flex items-center gap-1.5" role="status">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Tersimpan otomatis · {lastSavedTime}
-            </span>
-          )}
-          {saveStatus === 'idle' && (
-            <span className="chip ok flex items-center gap-1.5" role="status">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Tersimpan otomatis · {lastSavedTime}
-            </span>
-          )}
-          {saveStatus === 'error' && (
-            <span className="chip bd flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5" />
-              Gagal menyimpan
-            </span>
+          {currentDoc && isDocDraft && !isSubmissionClosed && (
+            <button
+              type="button"
+              onClick={handleSubmitDoc}
+              disabled={submittingDoc}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3D4E9C] text-white hover:bg-[#2F3E7C] rounded-md text-xs font-semibold transition cursor-pointer shadow-2xs disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {submittingDoc ? 'Mengajukan...' : 'Ajukan Dokumen'}
+            </button>
           )}
         </div>
       </div>
+
+      {/* 2. Banner Informasi Status Pengisian & Deadline Efektif (Fase 5 - FR-P10) */}
+      {isSubmissionClosed ? (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 flex items-start justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+            <div>
+              <p className="font-bold">Pengajuan Anggaran Ditutup / Melewati Batas Waktu</p>
+              <p className="text-xs mt-1 text-red-900 leading-relaxed">
+                {docAccess?.reason || 'Batas waktu pengisian untuk unit ini telah berakhir.'} Batas efektif:{' '}
+                <b>{docAccess?.effective_deadline || selectedPeriodObj?.fill_deadline || '-'}</b>.
+              </p>
+              <p className="text-xs text-red-700 mt-1">
+                Hubungi <b>{docAccess?.contact_accounting || 'bagian Akuntansi'}</b> untuk permohonan pembukaan akses. Seluruh formulir saat ini berstatus baca-saja (read-only).
+              </p>
+            </div>
+          </div>
+          <span className="chip bd shrink-0 font-bold">PENGAJUAN DITUTUP</span>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-[#9ACDAA] bg-[#DDF1E4] px-4 py-3 text-sm text-[#14532D] flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#14532D]" />
+            <span>
+              Pengajuan dibuka. Deadline pengisian:{' '}
+              <b>
+                {docAccess?.effective_deadline ||
+                  (() => {
+                    if (!selectedPeriodObj?.fill_deadline) return '15 Nov 2026';
+                    try {
+                      const d = new Date(selectedPeriodObj.fill_deadline);
+                      if (isNaN(d.getTime())) return '15 Nov 2026';
+                      return d.toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      });
+                    } catch {
+                      return '15 Nov 2026';
+                    }
+                  })()}
+              </b>
+              . Semua perubahan tersimpan otomatis.
+            </span>
+          </div>
+
+          {/* Chip Indikator Simpan Otomatis di pojok banner */}
+          <div className="shrink-0 flex items-center gap-2">
+            {saveStatus === 'saving' && (
+              <span className="chip wn flex items-center gap-1.5 animate-pulse">
+                <Clock className="w-3.5 h-3.5" />
+                Menyimpan perubahan...
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className="chip ok flex items-center gap-1.5" role="status">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Tersimpan otomatis · {lastSavedTime}
+              </span>
+            )}
+            {saveStatus === 'idle' && (
+              <span className="chip ok flex items-center gap-1.5" role="status">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Tersimpan otomatis · {lastSavedTime}
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="chip bd flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Gagal menyimpan
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Alert Error jika terjadi Bentrok Versi / Galat Simpan */}
       {saveStatus === 'error' && (
@@ -744,8 +855,8 @@ export default function EntryPage() {
               </div>
             </div>
 
-            {/* Form Entri Investasi (hanya saat DRAFT) */}
-            {currentDoc && currentDoc.status === 'DRAFT' && (
+            {/* Form Entri Investasi (hanya saat status aktif & akses terbuka) */}
+            {currentDoc && !isReadOnly && (
               <InvestmentForm
                 docId={currentDoc.id}
                 categories={investmentCategories}
@@ -764,7 +875,7 @@ export default function EntryPage() {
               <InvestmentTable
                 lines={investmentLines}
                 summary={investmentSummary}
-                isDocDraft={currentDoc.status === 'DRAFT'}
+                isDocDraft={!isReadOnly}
                 onEdit={(line) => setEditingInvestmentLine(line)}
                 onDelete={handleDeleteInvestmentLine}
               />
@@ -923,9 +1034,9 @@ export default function EntryPage() {
                   <button
                     type="button"
                     onClick={handleRefreshPrices}
-                    disabled={!currentDoc || refreshingPrices || currentDoc.status !== 'DRAFT'}
+                    disabled={!currentDoc || refreshingPrices || isReadOnly}
                     className="flex items-center gap-1 px-2.5 py-2 bg-white border border-[#B9B4C9] text-[#1F2233] hover:bg-slate-50 rounded-md text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                    title="Perbarui harga baris dengan harga master logistik terbaru"
+                    title={isReadOnly ? 'Formulir berstatus baca-saja' : 'Perbarui harga baris dengan harga master logistik terbaru'}
                   >
                     <RefreshCw className={`w-3.5 h-3.5 text-[#3D4E9C] ${refreshingPrices ? 'animate-spin' : ''}`} />
                     <span>{refreshingPrices ? '...' : 'Perbarui harga'}</span>
@@ -934,8 +1045,9 @@ export default function EntryPage() {
                   <button
                     type="button"
                     onClick={openAddMasterModal}
-                    disabled={!currentDoc || currentDoc.status !== 'DRAFT'}
+                    disabled={!currentDoc || isReadOnly}
                     className="flex items-center gap-1.5 px-3 py-2 bg-[#3D4E9C] text-white rounded-md text-xs font-semibold hover:bg-[#313f80] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    title={isReadOnly ? 'Formulir berstatus baca-saja' : 'Tambah barang dari katalog master'}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Tambah dari master
@@ -1056,12 +1168,13 @@ export default function EntryPage() {
                           <input
                             type="number"
                             min="0"
+                            disabled={isReadOnly}
                             value={line.qty === 0 ? '' : line.qty}
                             placeholder="0"
                             onChange={(e) =>
                               handleQtyChange(line.id, line.item_id, e.target.value)
                             }
-                            className="w-20 text-center text-xs font-semibold text-[#1F2233] bg-white border border-[#B9B4C9] rounded px-2 py-1.5 outline-none focus:border-[#3D4E9C] focus:ring-1 focus:ring-[#3D4E9C]"
+                            className="w-20 text-center text-xs font-semibold text-[#1F2233] bg-white border border-[#B9B4C9] rounded px-2 py-1.5 outline-none focus:border-[#3D4E9C] focus:ring-1 focus:ring-[#3D4E9C] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                           />
                         </td>
 
@@ -1085,14 +1198,18 @@ export default function EntryPage() {
 
                         {/* Aksi Hapus */}
                         <td className="py-2 px-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLine(line.id)}
-                            title="Hapus baris"
-                            className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {!isReadOnly ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLine(line.id)}
+                              title="Hapus baris"
+                              className="p-1 text-slate-400 hover:text-red-600 rounded transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-xs">—</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -1125,6 +1242,7 @@ export default function EntryPage() {
           {currentDoc && (
             <NewItemRequestsSection
               doc={currentDoc}
+              disabled={isReadOnly}
               onLineAdded={() => setRefreshLinesCounter((c) => c + 1)}
             />
           )}

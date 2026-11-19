@@ -6,6 +6,7 @@ const coaRepository = require('../repositories/coa.repository');
 const expenseLineRepository = require('../repositories/expenseLine.repository');
 const notificationRepository = require('../repositories/notification.repository');
 const AuditService = require('./audit.service');
+const submissionAccessService = require('./submissionAccess.service');
 
 const getRequestsByDocId = async (docId, user) => {
   const doc = await budgetDocRepository.findById(docId, user);
@@ -24,6 +25,9 @@ const createDraftRequest = async (docId, payload, user) => {
     error.statusCode = 404;
     throw error;
   }
+
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  await submissionAccessService.assertSubmissionOpen(doc);
 
   if (doc.status !== 'DRAFT') {
     const error = new Error('Permintaan barang baru hanya dapat ditambahkan saat dokumen berstatus DRAFT');
@@ -116,6 +120,12 @@ const updateDraftRequest = async (id, payload, user) => {
     throw error;
   }
 
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  const docForAccessUpdate = await budgetDocRepository.findRawById(reqItem.doc_id);
+  if (docForAccessUpdate) {
+    await submissionAccessService.assertSubmissionOpen(docForAccessUpdate);
+  }
+
   const updatedName = payload.name !== undefined ? payload.name : reqItem.name;
   if (payload.name !== undefined && (!payload.name || !payload.name.trim())) {
     const error = new Error('Nama barang tidak boleh kosong');
@@ -201,6 +211,12 @@ const deleteDraftRequest = async (id, user) => {
     throw error;
   }
 
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  const docForAccessDelete = await budgetDocRepository.findRawById(reqItem.doc_id);
+  if (docForAccessDelete) {
+    await submissionAccessService.assertSubmissionOpen(docForAccessDelete);
+  }
+
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
@@ -234,6 +250,9 @@ const sendRequests = async (docId, requestIds = null, user) => {
     error.statusCode = 404;
     throw error;
   }
+
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  await submissionAccessService.assertSubmissionOpen(doc);
 
   const client = await db.pool.connect();
   try {

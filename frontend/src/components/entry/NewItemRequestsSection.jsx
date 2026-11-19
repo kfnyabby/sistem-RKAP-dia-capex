@@ -19,7 +19,7 @@ function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID').format(value);
 }
 
-export default function NewItemRequestsSection({ doc, onLineAdded }) {
+export default function NewItemRequestsSection({ doc, onLineAdded, disabled = false }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -215,7 +215,7 @@ export default function NewItemRequestsSection({ doc, onLineAdded }) {
   };
 
   const draftRequests = requests.filter((r) => r.status === 'DRAFT');
-  const isDocDraft = doc && doc.status === 'DRAFT';
+  const isDocDraft = doc && (doc.status === 'DRAFT' || doc.status === 'DIKEMBALIKAN') && !disabled;
 
   return (
     <div className="bg-white rounded-lg border border-[#E6E0D6] shadow-2xs overflow-hidden mt-6">
@@ -625,4 +625,5 @@ export default function NewItemRequestsSection({ doc, onLineAdded }) {
 NewItemRequestsSection.propTypes = {
   doc: PropTypes.object,
   onLineAdded: PropTypes.func,
+  disabled: PropTypes.bool,
 };

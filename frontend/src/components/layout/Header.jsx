@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, UserCircle2, Building2, Calendar, LogOut } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
+import HeaderNotificationBell from './HeaderNotificationBell';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -72,6 +73,9 @@ export default function Header() {
 
       {/* Right: User Profile & Logout */}
       <div className="flex items-center gap-3">
+        {/* Lonceng Notifikasi In-App (FR-N1) */}
+        <HeaderNotificationBell />
+
         <div className="relative">
           <button
             type="button"

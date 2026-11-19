@@ -3,6 +3,7 @@ const budgetDocRepository = require('../repositories/budgetDoc.repository');
 const expenseLineRepository = require('../repositories/expenseLine.repository');
 const itemRepository = require('../repositories/item.repository');
 const AuditService = require('./audit.service');
+const submissionAccessService = require('./submissionAccess.service');
 
 const listDocs = async (filters, user) => {
   return await budgetDocRepository.findAll(filters, user);
@@ -111,7 +112,10 @@ const saveExpenseLines = async (docId, lines, user) => {
     throw error;
   }
 
-  if (doc.status !== 'DRAFT') {
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  await submissionAccessService.assertSubmissionOpen(doc);
+
+  if (doc.status !== 'DRAFT' && doc.status !== 'DIKEMBALIKAN') {
     const error = new Error(`Dokumen tidak dapat diubah pada status ${doc.status}`);
     error.status = 403;
     throw error;
@@ -285,7 +289,12 @@ const deleteExpenseLine = async (lineId, user) => {
       }
     }
 
-    if (line.doc_status !== 'DRAFT') {
+    const doc = await budgetDocRepository.findRawById(line.doc_id, client);
+    if (doc) {
+      await submissionAccessService.assertSubmissionOpen(doc, client);
+    }
+
+    if (line.doc_status !== 'DRAFT' && line.doc_status !== 'DIKEMBALIKAN') {
       const error = new Error(`Dokumen tidak dapat diubah pada status ${line.doc_status}`);
       error.status = 403;
       throw error;
@@ -351,7 +360,10 @@ const refreshDocPrices = async (docId, user) => {
     throw error;
   }
 
-  if (doc.status !== 'DRAFT') {
+  // Validasi akses efektif pengisian terbuka (BR-10)
+  await submissionAccessService.assertSubmissionOpen(doc);
+
+  if (doc.status !== 'DRAFT' && doc.status !== 'DIKEMBALIKAN') {
     const error = new Error(`Dokumen tidak dapat diubah pada status ${doc.status}`);
     error.status = 403;
     throw error;

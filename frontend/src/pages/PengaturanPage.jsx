@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Settings, Database, Calendar, Users, Sliders, History } from 'lucide-react';
 import MasterDataView from '../components/master/MasterDataView';
+import PeriodSubmissionSection from '../components/pengaturan/PeriodSubmissionSection';
 
 export default function PengaturanPage() {
   const [activeTab, setActiveTab] = useState('master');
@@ -65,6 +66,8 @@ export default function PengaturanPage() {
       {/* Tab Content */}
       {activeTab === 'master' ? (
         <MasterDataView />
+      ) : activeTab === 'periode' ? (
+        <PeriodSubmissionSection />
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs text-center">
           <div className="max-w-md mx-auto space-y-3">
