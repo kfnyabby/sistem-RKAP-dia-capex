@@ -30,7 +30,9 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="entry" element={<EntryPage />} />
+            <Route path="entry/biaya" element={<EntryPage />} />
             <Route path="proses" element={<ProsesPage />} />
+            <Route path="proses/penentuan-coa" element={<ProsesPage />} />
             <Route path="display" element={<DisplayPage />} />
             <Route path="laporan" element={<LaporanPage />} />
             {/* Rute Pengaturan khusus Role Akuntansi */}

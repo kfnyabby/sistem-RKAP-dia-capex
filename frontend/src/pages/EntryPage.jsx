@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { budgetApi } from '../api/budget.api';
 import { masterApi } from '../api/master.api';
+import NewItemRequestsSection from '../components/entry/NewItemRequestsSection';
 
 // Helper format angka rupiah
 function formatRupiah(value) {
@@ -984,6 +985,14 @@ export default function EntryPage() {
               </div>
             </div>
           </div>
+
+          {/* 6b. Permintaan Barang Baru (FR-B9, BR-17) */}
+          {currentDoc && (
+            <NewItemRequestsSection
+              doc={currentDoc}
+              onLineAdded={() => setRefreshLinesCounter((c) => c + 1)}
+            />
+          )}
         </>
       )}
 

@@ -1,0 +1,96 @@
+### ==============================================================================
+### FASE 3b: REST API CLIENT (PERMINTAAN BARANG BARU & PENENTUAN COA)
+### Format: VS Code REST Client
+### ==============================================================================
+
+@baseUrl = http://localhost:5000/api
+
+### 1. Ambil Token CSRF
+# @name getCsrf
+GET {{baseUrl}}/auth/csrf
+Content-Type: application/json
+
+###
+@csrfToken = {{getCsrf.response.body.csrf_token}}
+
+### 2. Login sebagai PIC Unit 1 (Rina)
+# @name loginPIC
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "email": "rina@ptcn.id",
+  "password": "password123"
+}
+
+### 3. Buat Draft Permintaan Barang Baru (PIC Unit 1, Dokumen ID 1)
+# @name createDraft
+POST {{baseUrl}}/budget-docs/1/new-item-requests
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "name": "Stetoskop Digital AI Pro",
+  "spec": "Bluetooth 5.0, Noise cancelling 40dB",
+  "uom": "Unit",
+  "qty": 2,
+  "est_price": 3500000,
+  "reason": "Kebutuhan upgrade alat diagnosa poli MCU"
+}
+
+###
+@requestId = {{createDraft.response.body.data.id}}
+
+### 4. Lihat Daftar Permintaan Barang Baru pada Dokumen Anggaran
+GET {{baseUrl}}/budget-docs/1/new-item-requests
+Content-Type: application/json
+
+### 5. Ubah Draft Permintaan Barang Baru (Hanya saat status DRAFT)
+PUT {{baseUrl}}/new-item-requests/{{requestId}}
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "name": "Stetoskop Digital AI Pro Max",
+  "spec": "Bluetooth 5.2, Noise cancelling 45dB",
+  "uom": "Unit",
+  "qty": 3,
+  "est_price": 3600000,
+  "reason": "Revisi spek dari dokter spesialis MCU"
+}
+
+### 6. Kirim Permintaan ke Akuntansi (DRAFT -> MENUNGGU_COA)
+POST {{baseUrl}}/budget-docs/1/new-item-requests/send
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "request_ids": [{{requestId}}]
+}
+
+### 7. Login sebagai Akuntansi (Dya Putri)
+# @name loginAkuntansi
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "email": "dya@ptcn.id",
+  "password": "password123"
+}
+
+### 8. Lihat Antrean Penentuan COA Barang Baru (Khusus Akuntansi)
+GET {{baseUrl}}/new-item-requests/queue?status=MENUNGGU_COA
+Content-Type: application/json
+
+### 9. Akuntansi Menentukan COA & Menambahkan Barang ke Master (BR-17 & BR-18)
+POST {{baseUrl}}/new-item-requests/{{requestId}}/assign-coa
+Content-Type: application/json
+X-CSRF-Token: {{csrfToken}}
+
+{
+  "coa_id": 1,
+  "item_code": "BRG-STET-001",
+  "price": 3600000
+}
