@@ -11,6 +11,8 @@ const realizationRoutes = require('./realization.routes');
 const workflowRoutes = require('./workflow.routes');
 const submissionAccessRoutes = require('./submissionAccess.routes');
 const notificationRoutes = require('./notification.routes');
+const dashboardRoutes = require('./dashboard.routes');
+const reportRoutes = require('./report.routes');
 const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 
@@ -39,6 +41,10 @@ router.use('/', investmentRoutes);
 
 // Modul Realisasi Jurnal Buku Besar (Fase 6)
 router.use('/', realizationRoutes);
+
+// Modul Dashboard & Laporan (Fase 7)
+router.use('/', dashboardRoutes);
+router.use('/', reportRoutes);
 
 // Endpoint uji otorisasi unit (untuk verifikasi requireUnitAccess)
 router.get('/test-unit-access/:unit_id', requireAuth, requireUnitAccess, (req, res) => {
