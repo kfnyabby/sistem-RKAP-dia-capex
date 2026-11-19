@@ -11,11 +11,16 @@ import {
   RefreshCw,
   CheckCircle2,
   X,
+  Laptop,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { budgetApi } from '../api/budget.api';
 import { masterApi } from '../api/master.api';
+import { investmentApi } from '../api/investment.api';
 import NewItemRequestsSection from '../components/entry/NewItemRequestsSection';
+import InvestmentForm from '../components/entry/InvestmentForm';
+import InvestmentTable from '../components/entry/InvestmentTable';
+import LaptopPcView from '../components/investment/LaptopPcView';
 
 // Helper format angka rupiah
 function formatRupiah(value) {
@@ -83,6 +88,15 @@ export default function EntryPage() {
     currentDocRef.current = currentDoc;
   }, [currentDoc]);
 
+  // --- STATE ANGGARAN INVESTASI (FASE 4) ---
+  const [investmentLines, setInvestmentLines] = useState([]);
+  const [investmentSummary, setInvestmentSummary] = useState({});
+  const [investmentCategories, setInvestmentCategories] = useState([]);
+  const [investmentPriorities, setInvestmentPriorities] = useState([]);
+  const [editingInvestmentLine, setEditingInvestmentLine] = useState(null);
+  const [showLaptopPcView, setShowLaptopPcView] = useState(false);
+  const [, setLoadingInvestment] = useState(false);
+
   // Modal Tambah dari Master
   const [showAddMasterModal, setShowAddMasterModal] = useState(false);
   const [availableItems, setAvailableItems] = useState([]);
@@ -97,10 +111,12 @@ export default function EntryPage() {
 
     async function loadInitialReferences() {
       try {
-        const [periodsData, groupsData, coasData] = await Promise.all([
+        const [periodsData, groupsData, coasData, catsData, priosData] = await Promise.all([
           budgetApi.getPeriods(),
           masterApi.getCoaGroups(),
           masterApi.getCoas({ category: 'biaya' }),
+          investmentApi.getInvestmentCategories(),
+          investmentApi.getPriorities(),
         ]);
 
         if (!isMounted) return;
@@ -108,6 +124,8 @@ export default function EntryPage() {
         setPeriods(periodsData);
         setCoaGroups(groupsData);
         setCoas(coasData.data || coasData);
+        setInvestmentCategories(catsData.data || catsData || []);
+        setInvestmentPriorities(priosData.data || priosData || []);
 
         // Pilih periode pertama secara default jika ada
         if (periodsData.length > 0) {
@@ -183,13 +201,15 @@ export default function EntryPage() {
       };
     }
 
+    const docType = activeTab === 'investasi' ? 'INVESTASI' : 'BIAYA';
+
     Promise.resolve()
       .then(() => {
         if (isMounted) setLoadingDoc(true);
         return budgetApi.getBudgetDocs({
           period_id: selectedPeriodId,
           unit_id: selectedUnitId,
-          type: 'BIAYA',
+          type: docType,
         });
       })
       .then(async (res) => {
@@ -203,7 +223,7 @@ export default function EntryPage() {
             const createRes = await budgetApi.createBudgetDoc({
               period_id: parseInt(selectedPeriodId, 10),
               unit_id: parseInt(selectedUnitId, 10),
-              type: 'BIAYA',
+              type: docType,
             });
             const newDocRes = await budgetApi.getBudgetDocById(createRes.doc_id);
             if (isMounted) setCurrentDoc(newDocRes);
@@ -212,7 +232,7 @@ export default function EntryPage() {
               const retryRes = await budgetApi.getBudgetDocs({
                 period_id: selectedPeriodId,
                 unit_id: selectedUnitId,
-                type: 'BIAYA',
+                type: docType,
               });
               if (isMounted && retryRes.data?.length > 0) {
                 setCurrentDoc(retryRes.data[0]);
@@ -235,13 +255,33 @@ export default function EntryPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedPeriodId, selectedUnitId]);
+  }, [selectedPeriodId, selectedUnitId, activeTab]);
 
-  // 3. Muat Baris Biaya & Total per COA saat Dokumen Aktif
+  // 3. Muat Baris Biaya / Investasi saat Dokumen Aktif
   useEffect(() => {
     let isMounted = true;
     const docId = currentDoc?.id;
     if (!docId) return;
+
+    if (activeTab === 'investasi') {
+      setLoadingInvestment(true);
+      investmentApi
+        .getInvestmentLines(docId)
+        .then((res) => {
+          if (!isMounted) return;
+          setInvestmentLines(res.data || []);
+          setInvestmentSummary(res.summary || {});
+        })
+        .catch((err) => {
+          console.error('Gagal memuat baris investasi:', err.message);
+        })
+        .finally(() => {
+          if (isMounted) setLoadingInvestment(false);
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
 
     Promise.resolve()
       .then(() => {
@@ -273,7 +313,7 @@ export default function EntryPage() {
     return () => {
       isMounted = false;
     };
-  }, [currentDoc?.id, searchQuery, selectedGroupId, selectedCoaId, onlyFilled, refreshLinesCounter]);
+  }, [currentDoc?.id, activeTab, searchQuery, selectedGroupId, selectedCoaId, onlyFilled, refreshLinesCounter]);
 
   // 4. Mekanisme Eksekusi Simpan Otomatis (Debounced Auto-Save)
   const flushPendingUpdates = async () => {
@@ -374,6 +414,18 @@ export default function EntryPage() {
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal menghapus baris anggaran');
+    }
+  };
+
+  // Handler Hapus Baris Investasi (Fase 4)
+  const handleDeleteInvestmentLine = async (lineId) => {
+    if (!lineId) return;
+    if (!window.confirm('Apakah Anda yakin ingin menghapus baris investasi ini?')) return;
+    try {
+      await investmentApi.deleteInvestmentLine(lineId);
+      setRefreshLinesCounter((c) => c + 1);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal menghapus baris investasi');
     }
   };
 
@@ -629,13 +681,96 @@ export default function EntryPage() {
       </div>
 
       {activeTab === 'investasi' ? (
-        <div className="bg-white rounded-lg border border-[#E6E0D6] p-8 text-center text-[#5E6070] shadow-2xs">
-          <Briefcase className="w-8 h-8 text-[#3D4E9C] mx-auto mb-2 opacity-60" />
-          <h3 className="text-base font-bold text-[#1F2233]">Modul Anggaran Investasi (Capex)</h3>
-          <p className="text-xs text-[#5E6070] mt-1 max-w-md mx-auto">
-            Form input investasi dengan validasi BR-01 (&gt; Rp 5.000.000) dan susut otomatis akan dibangun pada Fase 5.
-          </p>
-        </div>
+        showLaptopPcView ? (
+          <LaptopPcView onBack={() => setShowLaptopPcView(false)} />
+        ) : (
+          <div className="space-y-4">
+            {/* Header Actions & Info */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-lg border border-[#E6E0D6] p-3 shadow-2xs">
+              <div className="flex items-center gap-2 text-xs text-[#5E6070]">
+                <Briefcase className="w-4 h-4 text-[#3D4E9C]" />
+                <span>Pengisian anggaran belanja modal / aset tetap (Capex) unit kerja.</span>
+              </div>
+              {(user?.role === 'akuntansi' || user?.role === 'manager') && (
+                <button
+                  type="button"
+                  onClick={() => setShowLaptopPcView(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF7F2] border border-[#B9B4C9] hover:bg-[#F0EBE2] text-[#1F2233] rounded-md text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Laptop className="w-3.5 h-3.5 text-[#3D4E9C]" />
+                  Lihat Pengadaan Laptop &amp; PC Lintas Unit
+                </button>
+              )}
+            </div>
+
+            {/* Filter Periode & Unit */}
+            <div className="bg-white rounded-lg border border-[#E6E0D6] p-4 shadow-2xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-[#5E6070] mb-1">Periode RKAP</label>
+                  <select
+                    value={selectedPeriodId}
+                    onChange={(e) => setSelectedPeriodId(e.target.value)}
+                    className="w-full text-xs font-medium text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md px-3 py-2 outline-none focus:border-[#3D4E9C]"
+                  >
+                    {periodList.map((p) => {
+                      const pId = p.period_id || p.id;
+                      return (
+                        <option key={pId} value={pId}>
+                          RKAP {p.year} ({p.company_code || 'CN'})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5E6070] mb-1">Unit Kerja</label>
+                  <select
+                    value={selectedUnitId}
+                    onChange={(e) => setSelectedUnitId(e.target.value)}
+                    disabled={unitList.length <= 1}
+                    className="w-full text-xs font-medium text-[#1F2233] bg-white border border-[#B9B4C9] rounded-md px-3 py-2 outline-none focus:border-[#3D4E9C] disabled:bg-slate-100 disabled:text-slate-500"
+                  >
+                    {unitList.map((u) => {
+                      const uId = u.id || u.unit_id;
+                      return (
+                        <option key={uId} value={uId}>
+                          [{u.code || '-'}] {u.name}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Entri Investasi (hanya saat DRAFT) */}
+            {currentDoc && currentDoc.status === 'DRAFT' && (
+              <InvestmentForm
+                docId={currentDoc.id}
+                categories={investmentCategories}
+                priorities={investmentPriorities}
+                editingLine={editingInvestmentLine}
+                onSaveSuccess={() => {
+                  setEditingInvestmentLine(null);
+                  setRefreshLinesCounter((c) => c + 1);
+                }}
+                onCancel={() => setEditingInvestmentLine(null)}
+              />
+            )}
+
+            {/* Tabel Investasi & Ringkasan */}
+            {currentDoc && (
+              <InvestmentTable
+                lines={investmentLines}
+                summary={investmentSummary}
+                isDocDraft={currentDoc.status === 'DRAFT'}
+                onEdit={(line) => setEditingInvestmentLine(line)}
+                onDelete={handleDeleteInvestmentLine}
+              />
+            )}
+          </div>
+        )
       ) : (
         <>
           {/* 4. Filter Berurutan (FR-B2: Cari barang, Jenis COA, COA, Periode) */}

@@ -259,7 +259,11 @@ const create = async (docData, client = db) => {
 const recalculateTotal = async (docId, client = db) => {
   const res = await client.query(
     `UPDATE budget_docs
-     SET total_amount = COALESCE((SELECT SUM(amount) FROM expense_lines WHERE doc_id = $1), 0),
+     SET total_amount = COALESCE(
+       CASE 
+         WHEN type = 'INVESTASI' THEN (SELECT SUM(amount) FROM investment_lines WHERE doc_id = $1)
+         ELSE (SELECT SUM(amount) FROM expense_lines WHERE doc_id = $1)
+       END, 0),
          updated_at = NOW()
      WHERE id = $1
      RETURNING *`,
@@ -273,6 +277,88 @@ const recalculateTotal = async (docId, client = db) => {
   };
 };
 
+const getInvestmentSummary = async (docId, client = db) => {
+  const parsedDocId = parseInt(docId, 10);
+
+  // 1. Total investasi & total penyusutan
+  const totalsRes = await client.query(
+    `SELECT 
+       COALESCE(SUM(amount), 0) AS total_amount,
+       COALESCE(SUM(depreciation_amount), 0) AS total_depreciation,
+       COUNT(id) AS total_items
+     FROM investment_lines
+     WHERE doc_id = $1`,
+    [parsedDocId]
+  );
+  const totals = totalsRes.rows[0];
+
+  // 2. Ringkasan per Kategori
+  const catRes = await client.query(
+    `SELECT 
+       ic.id AS category_id,
+       ic.name AS category_name,
+       COALESCE(SUM(il.amount), 0) AS amount,
+       COALESCE(SUM(il.depreciation_amount), 0) AS depreciation_amount,
+       COUNT(il.id) AS item_count
+     FROM investment_lines il
+     JOIN investment_categories ic ON ic.id = il.category_id
+     WHERE il.doc_id = $1
+     GROUP BY ic.id, ic.name
+     ORDER BY ic.name ASC`,
+    [parsedDocId]
+  );
+
+  // 3. Ringkasan per Prioritas
+  const prioRes = await client.query(
+    `SELECT 
+       p.id AS priority_id,
+       p.name AS priority_name,
+       COALESCE(SUM(il.amount), 0) AS amount,
+       COUNT(il.id) AS item_count
+     FROM investment_lines il
+     JOIN priorities p ON p.id = il.priority_id
+     WHERE il.doc_id = $1
+     GROUP BY p.id, p.name
+     ORDER BY p.id ASC`,
+    [parsedDocId]
+  );
+
+  // 4. Ringkasan per Bulan Rencana
+  const monthRes = await client.query(
+    `SELECT 
+       il.plan_month,
+       COALESCE(SUM(il.amount), 0) AS amount,
+       COUNT(il.id) AS item_count
+     FROM investment_lines il
+     WHERE il.doc_id = $1
+     GROUP BY il.plan_month
+     ORDER BY il.plan_month ASC`,
+    [parsedDocId]
+  );
+
+  return {
+    total_amount: parseInt(totals.total_amount, 10),
+    total_depreciation: parseInt(totals.total_depreciation, 10),
+    total_items: parseInt(totals.total_items, 10),
+    by_category: catRes.rows.map((r) => ({
+      ...r,
+      amount: parseInt(r.amount, 10),
+      depreciation_amount: parseInt(r.depreciation_amount, 10),
+      item_count: parseInt(r.item_count, 10),
+    })),
+    by_priority: prioRes.rows.map((r) => ({
+      ...r,
+      amount: parseInt(r.amount, 10),
+      item_count: parseInt(r.item_count, 10),
+    })),
+    by_month: monthRes.rows.map((r) => ({
+      ...r,
+      amount: parseInt(r.amount, 10),
+      item_count: parseInt(r.item_count, 10),
+    })),
+  };
+};
+
 const deleteById = async (id, client = db) => {
   await client.query('DELETE FROM budget_docs WHERE id = $1', [parseInt(id, 10)]);
 };
@@ -283,6 +369,7 @@ module.exports = {
   findById,
   findByUnitPeriodType,
   getTotalsByCoa,
+  getInvestmentSummary,
   create,
   recalculateTotal,
   deleteById,
