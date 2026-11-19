@@ -27,6 +27,7 @@ const errorHandler = (err, req, res, next) => {
     console.error('Unhandled server error:', err);
   }
   res.status(status).json({
+    success: false,
     message,
     ...(err.errors && { errors: err.errors }),
   });

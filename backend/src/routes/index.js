@@ -5,6 +5,7 @@ const healthRoutes = require('./health.routes');
 const masterRoutes = require('./master.routes');
 const periodRoutes = require('./period.routes');
 const budgetRoutes = require('./budget.routes');
+const realizationRoutes = require('./realization.routes');
 const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 
@@ -23,6 +24,9 @@ router.use('/', masterRoutes);
 // Modul Periode & Dokumen Anggaran (Fase 3)
 router.use('/', periodRoutes);
 router.use('/', budgetRoutes);
+
+// Modul Realisasi Jurnal Buku Besar (Fase 6)
+router.use('/', realizationRoutes);
 
 // Endpoint uji otorisasi unit (untuk verifikasi requireUnitAccess)
 router.get('/test-unit-access/:unit_id', requireAuth, requireUnitAccess, (req, res) => {

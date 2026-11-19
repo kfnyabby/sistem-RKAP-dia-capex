@@ -131,3 +131,30 @@ Proyek sudah berjalan sebagai starter. **Jangan membuat ulang; bangun di atasnya
 - Jangan membuat ulang struktur proyek, mengganti nama `backend` atau `frontend`, atau menambah ORM tanpa keputusan tercatat.
 - Jangan mengubah mockup atau PRD kecuali diminta; usulkan perubahannya di `docs/DECISIONS.md`.
 - Jangan menghapus data pengguna atau menimpa file besar tanpa konfirmasi.
+
+### B9. Pelajaran dari tinjauan fase sebelumnya (wajib dipatuhi)
+- **Jangan menulis id perusahaan, periode, atau unit langsung di kode** (mis. `1`, `2`). Cari dari tabel (`companies`, `periods`, `units`) lewat kode atau kunci yang stabil.
+- **Jangan pernah mengembalikan angka karangan atau data contoh dari endpoint** saat data belum ada. Kembalikan `null` atau daftar kosong dan biarkan layar menampilkan keadaan kosong.
+- **`dry_run` harus menemukan semua galat yang akan ditemui import sungguhan** (kode ganda, nilai tak dikenal, pelanggaran keunikan). Import sungguhan melewati baris bermasalah dan melaporkannya per baris; jangan gagal seluruhnya dengan galat database mentah.
+- **Galat input pengguna harus 400, 403, 404, 409, atau 422 dengan pesan Indonesia yang jelas**, bukan 500. Termasuk galat unggah file (tipe, ukuran, file rusak).
+- **Import ulang tidak boleh menimpa data yang sudah diubah pengguna** kecuali diminta eksplisit lewat parameter atau kolom keputusan, dan tidak boleh mengosongkan nilai yang sudah ada.
+- **Perubahan beberapa baris dilakukan dalam satu transaksi**, termasuk catatan audit (`AuditService.log(..., client)`).
+- **Filter unit ada di repository.** Setiap query data milik unit menerima daftar unit pengguna.
+- **Tes membersihkan data yang dibuatnya** dan tidak bergantung pada urutan tes lain.
+- **Nilai bisnis yang bisa berubah** (ambang, batas karakter, akun) berada di tabel `settings`.
+
+### B10. Laporan akhir fase (menggantikan kebutuhan mengirim seluruh proyek)
+Di akhir setiap fase, tulis `docs/reports/fase-<nomor>.md` (maksimal 60 baris) berisi:
+1. Ringkasan hasil (5 baris).
+2. Migrasi baru (nama berkas dan isi singkat) dan endpoint baru (metode dan jalur).
+3. Hasil verifikasi: jumlah tes lulus dan gagal, hasil lint dan build.
+4. **Penyimpangan** dari PRD, DECISIONS.md, dan mockup, dengan alasannya.
+5. Hal yang **diasumsikan atau ditulis langsung di kode** (daftar jujur, termasuk yang tidak yakin).
+6. Pertanyaan terbuka yang menunggu keputusan dan risiko yang diketahui.
+Jangan menyalin kode ke laporan.
+
+### B11. Mode backend dulu (berlaku sampai ada instruksi frontend)
+- Kerjakan **hanya `backend/`**. Jangan mengubah, membuat, atau merapikan berkas di `frontend/`, kecuali diminta eksplisit.
+- Karena belum ada layar yang bisa dipakai untuk mencoba, setiap fase menyediakan `docs/api/fase-<nomor>.http` (format VS Code REST Client) berisi contoh request untuk setiap endpoint baru, termasuk login dan token CSRF, supaya pemilik proyek bisa mencoba tanpa antarmuka.
+- Kontrak API (jalur, parameter, bentuk respons) mengikuti `docs/PRD_Sistem_RKAP_DIA_CAPEX.pdf`. Bila kode harus menyimpang, catat di laporan fase.
+- Pengerjaan frontend dilakukan terpisah, satu layar per tugas, dengan memindahkan HTML dan CSS dari `docs/mockup/` ke komponen React dan menghubungkannya ke API yang sudah ada.
