@@ -133,6 +133,18 @@ export const masterApi = {
     const res = await api.get('/reference-data');
     return res.data;
   },
+
+  // --- ITEM AUDIT LOGS / PRICE HISTORY ---
+  getItemPriceAuditLogs: async () => {
+    const res = await api.get('/audit-logs', {
+      params: {
+        entity: 'items',
+        action: 'update_item_prices',
+        limit: 50,
+      },
+    });
+    return res.data;
+  },
 };
 
 export default masterApi;

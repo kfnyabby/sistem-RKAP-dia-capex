@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, Loader2, Save } from 'lucide-react';
 import masterApi from '../../api/master.api';
 
 export default function InvestmentCategoryModal({ isOpen, onClose, category, coaList = [], onSuccess }) {
-  const [usefulLifeMonths, setUsefulLifeMonths] = useState(() => category?.useful_life_months || 60);
-  const [depreciationCoaId, setDepreciationCoaId] = useState(() => category?.depreciation_coa_id || '');
+  const [usefulLifeMonths, setUsefulLifeMonths] = useState(60);
+  const [depreciationCoaId, setDepreciationCoaId] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  useEffect(() => {
+    if (category && isOpen) {
+      setUsefulLifeMonths(category.useful_life_months || 60);
+      setDepreciationCoaId(category.depreciation_coa_id || '');
+      setErrorMsg(null);
+    }
+  }, [category, isOpen]);
 
   if (!isOpen || !category) return null;
 
@@ -18,7 +25,7 @@ export default function InvestmentCategoryModal({ isOpen, onClose, category, coa
 
     try {
       await masterApi.updateInvestmentCategory(category.id, {
-        useful_life_months: Number(usefulLifeMonths),
+        useful_life_months: Math.max(1, parseInt(usefulLifeMonths, 10) || 60),
         depreciation_coa_id: depreciationCoaId ? Number(depreciationCoaId) : null,
       });
 
@@ -32,92 +39,104 @@ export default function InvestmentCategoryModal({ isOpen, onClose, category, coa
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md my-8 overflow-hidden animate-in fade-in duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <h2 className="text-base font-bold text-slate-800">
-            Ubah Kategori Investasi
-          </h2>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(35, 43, 74, 0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '16px',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        className="card"
+        style={{
+          maxWidth: '480px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '18px' }}>Ubah Kategori Investasi</h2>
+            <div style={{ fontSize: '12px', color: '#5E6070', marginTop: '2px' }}>
+              Atur masa manfaat dan pemetaan akun beban penyusutan
+            </div>
+          </div>
           <button
             type="button"
+            className="btn b2"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            style={{ minHeight: '36px', padding: '0 12px' }}
           >
-            <X className="w-5 h-5" />
+            ✕ Tutup
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {errorMsg && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-              {errorMsg}
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Nama Kategori</label>
-            <input
-              type="text"
-              disabled
-              value={category.name || ''}
-              className="w-full text-xs bg-slate-100 text-slate-700 cursor-not-allowed"
-            />
+        {errorMsg && (
+          <div className="card" style={{ background: '#F8D9D6', borderColor: '#E59B96', color: '#8A1F1B', marginBottom: '14px' }}>
+            {errorMsg}
           </div>
+        )}
 
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label>
+              Nama Kategori Investasi
+              <input
+                type="text"
+                disabled
+                value={category.name || ''}
+                style={{ background: '#FAF7F2', color: '#1F2233', cursor: 'not-allowed' }}
+              />
+            </label>
+
+            <label>
               Masa Manfaat (Bulan)
+              <input
+                type="number"
+                min="1"
+                required
+                value={usefulLifeMonths}
+                onChange={(e) => setUsefulLifeMonths(e.target.value)}
+              />
+              <span style={{ fontSize: '11px', color: '#5E6070', marginTop: '3px' }}>
+                Contoh: 120 bulan (10 tahun), 60 bulan (5 tahun), 48 bulan (4 tahun).
+              </span>
             </label>
-            <input
-              type="number"
-              min="1"
-              required
-              value={usefulLifeMonths}
-              onChange={(e) => setUsefulLifeMonths(e.target.value)}
-              className="w-full text-xs"
-            />
-            <span className="text-[11px] text-slate-500 mt-1 block">
-              Contoh: 120 bulan (10 tahun), 60 bulan (5 tahun), 48 bulan (4 tahun).
-            </span>
-          </div>
 
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">
+            <label>
               Akun COA Biaya Penyusutan
+              <select
+                value={depreciationCoaId}
+                onChange={(e) => setDepreciationCoaId(e.target.value)}
+              >
+                <option value="">-- Pilih Akun COA Penyusutan --</option>
+                {coaList.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} - {c.name}
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: '11px', color: '#5E6070', marginTop: '3px' }}>
+                Akun beban penyusutan yang akan otomatis dipilih saat pengajuan anggaran investasi.
+              </span>
             </label>
-            <select
-              value={depreciationCoaId}
-              onChange={(e) => setDepreciationCoaId(e.target.value)}
-              className="w-full text-xs"
-            >
-              <option value="">-- Pilih Akun COA Penyusutan --</option>
-              {coaList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} - {c.name}
-                </option>
-              ))}
-            </select>
-            <span className="text-[11px] text-slate-500 mt-1 block">
-              Otomatis terisi saat unit memilih kategori ini di Entry Investasi (BR-15).
-            </span>
-          </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary px-5 py-2 text-xs font-semibold flex items-center gap-1.5"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>Simpan Perubahan</span>
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button type="submit" className="btn" disabled={loading}>
+                {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+              <button type="button" className="btn b2" onClick={onClose} disabled={loading}>
+                Batal
+              </button>
+            </div>
           </div>
         </form>
       </div>

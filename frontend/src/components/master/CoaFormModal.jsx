@@ -1,19 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, Loader2, Save } from 'lucide-react';
 import masterApi from '../../api/master.api';
 
-export default function CoaFormModal({ isOpen, onClose, coa, coaGroups = [], onSuccess }) {
-  const [formData, setFormData] = useState(() => ({
-    code: coa?.code || '',
-    name: coa?.name || '',
-    type: coa?.type || 'biaya',
-    coa_group_id: coa?.coa_group_id || '',
-    category: coa?.category || '',
-    is_active: coa?.is_active !== undefined ? coa.is_active : true,
-  }));
+export default function CoaFormModal({ isOpen, onClose, coa, groupList = [], onSuccess }) {
+  const [formData, setFormData] = useState({
+    code: '',
+    name: '',
+    category: 'biaya',
+    group_id: '',
+  });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (coa) {
+        setFormData({
+          code: coa.code || '',
+          name: coa.name || '',
+          category: coa.category || 'biaya',
+          group_id: coa.group_id || '',
+        });
+      } else {
+        setFormData({
+          code: '',
+          name: '',
+          category: 'biaya',
+          group_id: groupList[0]?.id || '',
+        });
+      }
+      setErrorMsg(null);
+    }
+  }, [coa, isOpen, groupList]);
 
   if (!isOpen) return null;
 
@@ -24,8 +42,10 @@ export default function CoaFormModal({ isOpen, onClose, coa, coaGroups = [], onS
 
     try {
       const payload = {
-        ...formData,
-        coa_group_id: formData.coa_group_id ? Number(formData.coa_group_id) : null,
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        category: formData.category,
+        group_id: formData.group_id ? Number(formData.group_id) : null,
       };
 
       if (coa?.id) {
@@ -37,131 +57,120 @@ export default function CoaFormModal({ isOpen, onClose, coa, coaGroups = [], onS
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Gagal menyimpan data akun COA');
+      setErrorMsg(err.response?.data?.message || 'Gagal menyimpan data bagan akun COA');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md my-8 overflow-hidden animate-in fade-in duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-          <h2 className="text-base font-bold text-slate-800">
-            {coa?.id ? 'Ubah Akun COA' : 'Tambah Akun COA'}
-          </h2>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(35, 43, 74, 0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '16px',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        className="card"
+        style={{
+          maxWidth: '480px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '18px' }}>
+              {coa?.id ? 'Ubah Akun COA' : 'Tambah Akun COA Baru'}
+            </h2>
+            <div style={{ fontSize: '12px', color: '#5E6070', marginTop: '2px' }}>
+              Bagan akun standar biaya dan investasi
+            </div>
+          </div>
           <button
             type="button"
+            className="btn b2"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            style={{ minHeight: '36px', padding: '0 12px' }}
           >
-            <X className="w-5 h-5" />
+            ✕ Tutup
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {errorMsg && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-              {errorMsg}
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Kode Akun COA</label>
-            <input
-              type="text"
-              required
-              disabled={Boolean(coa?.id)}
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-              placeholder="cth. 5.8.3"
-              className="w-full text-xs"
-            />
+        {errorMsg && (
+          <div className="card" style={{ background: '#F8D9D6', borderColor: '#E59B96', color: '#8A1F1B', marginBottom: '14px' }}>
+            {errorMsg}
           </div>
+        )}
 
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Nama Akun COA</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Biaya Cetak & Fotocopy"
-              className="w-full text-xs"
-            />
-          </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label>
+              Kode COA (Format Standar)
+              <input
+                type="text"
+                required
+                disabled={Boolean(coa?.id)}
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                placeholder="cth. 5.8.3 atau 1.3.1"
+              />
+            </label>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Tipe Akun</label>
+            <label>
+              Nama Akun COA
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="cth. Biaya Cetak &amp; Fotocopy"
+              />
+            </label>
+
+            <label>
+              Kategori Akun
               <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className="w-full text-xs"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               >
-                <option value="biaya">Biaya</option>
-                <option value="investasi">Investasi / Aset Tetap</option>
-                <option value="pendapatan">Pendapatan</option>
-                <option value="lainnya">Lainnya</option>
+                <option value="biaya">Biaya (Operasional &amp; Pemeliharaan)</option>
+                <option value="investasi">Investasi (Aset Tetap)</option>
               </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Kelompok Biaya</label>
+            </label>
+
+            <label>
+              Kelompok Akun (Jenis COA)
               <select
-                value={formData.coa_group_id}
-                onChange={(e) => setFormData({ ...formData, coa_group_id: e.target.value })}
-                className="w-full text-xs"
+                value={formData.group_id}
+                onChange={(e) => setFormData({ ...formData, group_id: e.target.value })}
               >
-                <option value="">-- Tanpa Kelompok --</option>
-                {coaGroups.map((g) => (
+                <option value="">-- Tanpa Kelompok Khusus --</option>
+                {groupList.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.code} - {g.name}
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Kategori Tambahan</label>
-            <input
-              type="text"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="cth. Biaya Administrasi Umum"
-              className="w-full text-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="coa-active-check"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="w-4 h-4 text-primary-600 rounded border-slate-300"
-            />
-            <label htmlFor="coa-active-check" className="text-xs text-slate-700 font-medium cursor-pointer">
-              Akun aktif
             </label>
-          </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary px-5 py-2 text-xs font-semibold flex items-center gap-1.5"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>Simpan</span>
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button type="submit" className="btn" disabled={loading}>
+                {loading ? 'Menyimpan...' : (coa?.id ? 'Simpan Perubahan' : 'Tambahkan COA')}
+              </button>
+              <button type="button" className="btn b2" onClick={onClose} disabled={loading}>
+                Batal
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -173,6 +182,6 @@ CoaFormModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   coa: PropTypes.object,
-  coaGroups: PropTypes.array,
+  groupList: PropTypes.array,
   onSuccess: PropTypes.func,
 };
