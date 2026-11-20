@@ -1,7 +1,11 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-export default function ProtectedRoute({ children, allowedRoles }) {
+export default function ProtectedRoute({
+  children,
+  allowedRoles,
+  deniedMessage = 'Akses ditolak: Anda tidak memiliki wewenang untuk membuka halaman tersebut.',
+}) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -46,7 +50,13 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     const userRole = (user.role || '').toLowerCase();
     const isAllowed = allowedRoles.some((r) => r.toLowerCase() === userRole);
     if (!isAllowed) {
-      return <Navigate to="/dashboard" replace />;
+      return (
+        <Navigate
+          to="/dashboard"
+          state={{ alert: { message: deniedMessage, variant: 'bd' } }}
+          replace
+        />
+      );
     }
   }
 

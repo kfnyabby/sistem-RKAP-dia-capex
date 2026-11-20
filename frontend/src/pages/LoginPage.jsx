@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('rina@ptcn.id');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,12 +29,6 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleQuickSelect = (quickEmail) => {
-    setEmail(quickEmail);
-    setPassword('password123');
-    setError(null);
   };
 
   return (
@@ -63,7 +57,17 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="chip bd" style={{ display: 'flex', width: '100%', boxSizing: 'border-box', justifyContent: 'center', padding: '8px 12px', borderRadius: '8px' }}>
+          <div
+            className="chip bd"
+            style={{
+              display: 'flex',
+              width: '100%',
+              boxSizing: 'border-box',
+              justifyContent: 'center',
+              padding: '8px 12px',
+              borderRadius: '8px',
+            }}
+          >
             {error}
           </div>
         )}
@@ -76,6 +80,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="nama@ptcn.id"
               required
             />
           </label>
@@ -87,6 +92,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
             />
           </label>
@@ -95,39 +101,6 @@ export default function LoginPage() {
             {isSubmitting ? 'Memproses...' : 'Masuk'}
           </button>
         </form>
-
-        {/* Akses Cepat Akun Demo (PIC / Manager / Akuntansi) */}
-        <div style={{ paddingTop: '8px', borderTop: '1px solid #F0EBE2', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '11px', color: '#5E6070', textAlign: 'center' }}>
-            Pilih Cepat Pengguna Demo:
-          </span>
-          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-            <button
-              type="button"
-              onClick={() => handleQuickSelect('rina@ptcn.id')}
-              className="chip nt"
-              style={{ border: '1px solid #E6E0D6', cursor: 'pointer' }}
-            >
-              PIC (Rina)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickSelect('budi@ptcn.id')}
-              className="chip nt"
-              style={{ border: '1px solid #E6E0D6', cursor: 'pointer' }}
-            >
-              Manager (Budi)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickSelect('dya@ptcn.id')}
-              className="chip nt"
-              style={{ border: '1px solid #E6E0D6', cursor: 'pointer' }}
-            >
-              Akuntansi (Dya)
-            </button>
-          </div>
-        </div>
 
         <p style={{ margin: 0, fontSize: '13px', color: '#5E6070', textAlign: 'center', minHeight: '42px' }}>
           Lupa kata sandi? Hubungi Akuntansi. <br />

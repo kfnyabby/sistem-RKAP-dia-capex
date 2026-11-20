@@ -1,15 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  CheckSquare,
   Search,
-  Filter,
   Eye,
   Lock,
-  RotateCcw,
-  Clock,
-  CheckCircle2,
-  Building2,
-  Calendar,
 } from 'lucide-react';
 import { workflowApi } from '../../api/workflow.api';
 import { budgetApi } from '../../api/budget.api';
@@ -69,7 +62,7 @@ export default function ValidationQueueSection() {
   }, []);
 
   // 2. Load daftar dokumen review queue
-  const fetchQueue = async () => {
+  const fetchQueue = useCallback(async () => {
     if (!selectedPeriodId) return;
     setLoading(true);
     try {
@@ -86,11 +79,11 @@ export default function ValidationQueueSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPeriodId, statusFilter, typeFilter]);
 
   useEffect(() => {
     fetchQueue();
-  }, [selectedPeriodId, statusFilter, typeFilter]);
+  }, [fetchQueue]);
 
   // Handle finalisasi massal
   const handleBulkFinalize = async () => {

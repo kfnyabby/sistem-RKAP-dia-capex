@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Laptop,
   Search,
@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Coins,
   TrendingDown,
-  Layers,
   ArrowLeft,
 } from 'lucide-react';
 import { investmentApi } from '../../api/investment.api';
@@ -23,13 +22,12 @@ const MONTH_SHORT = [
 
 export default function LaptopPcView({ onBack }) {
   const [lines, setLines] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setErrorMsg('');
     try {
@@ -40,17 +38,16 @@ export default function LaptopPcView({ onBack }) {
         per_page: 100,
       });
       setLines(res.data || []);
-      setTotalCount(res.meta?.total || 0);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Gagal memuat daftar Laptop & PC lintas unit');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, companyId]);
 
   useEffect(() => {
     loadData();
-  }, [companyId]);
+  }, [loadData]);
 
   const grandTotalAmount = lines.reduce((acc, l) => acc + (l.amount || 0), 0);
   const grandTotalQty = lines.reduce((acc, l) => acc + (l.qty || 0), 0);

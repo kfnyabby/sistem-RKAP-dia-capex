@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
   FilePlus2,
@@ -50,7 +50,7 @@ export default function NewItemRequestsSection({ doc, onLineAdded, disabled = fa
 
   const docId = doc?.id;
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     if (!docId) return;
     setLoading(true);
     try {
@@ -61,11 +61,11 @@ export default function NewItemRequestsSection({ doc, onLineAdded, disabled = fa
     } finally {
       setLoading(false);
     }
-  };
+  }, [docId]);
 
   useEffect(() => {
     loadRequests();
-  }, [docId]);
+  }, [loadRequests]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

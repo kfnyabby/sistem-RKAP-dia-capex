@@ -1,14 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Calendar,
   Lock,
   Unlock,
   Clock,
-  CheckCircle2,
   AlertCircle,
   Save,
   Sliders,
-  RotateCcw,
   Search,
 } from 'lucide-react';
 import { submissionAccessApi } from '../../api/submissionAccess.api';
@@ -60,7 +58,7 @@ export default function PeriodSubmissionSection() {
   const [overriding, setOverriding] = useState(false);
 
   // 1. Ambil daftar periode
-  const fetchPeriods = async () => {
+  const fetchPeriods = useCallback(async () => {
     try {
       const data = await budgetApi.getPeriods();
       setPeriods(data || []);
@@ -71,14 +69,14 @@ export default function PeriodSubmissionSection() {
     } catch (err) {
       console.error('Gagal memuat periode:', err.message);
     }
-  };
+  }, [selectedPeriodId]);
 
   useEffect(() => {
     fetchPeriods();
-  }, []);
+  }, [fetchPeriods]);
 
   // 2. Saat periode terpilih berubah, ambil data unit-access dan detail deadline
-  const fetchPeriodData = async () => {
+  const fetchPeriodData = useCallback(async () => {
     if (!selectedPeriodId) return;
     setLoading(true);
     try {
@@ -98,11 +96,11 @@ export default function PeriodSubmissionSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPeriodId, periods]);
 
   useEffect(() => {
     fetchPeriodData();
-  }, [selectedPeriodId, periods]);
+  }, [fetchPeriodData]);
 
   // Simpan perubahan deadline periode
   const handleSaveDeadlines = async (e) => {

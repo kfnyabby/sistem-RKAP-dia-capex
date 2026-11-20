@@ -7,8 +7,6 @@ import {
   HelpCircle,
   Save,
   X,
-  Calculator,
-  Calendar,
   CheckCircle2,
 } from 'lucide-react';
 import { investmentApi } from '../../api/investment.api';

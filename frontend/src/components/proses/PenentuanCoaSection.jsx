@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Layers,
   Search,
@@ -10,7 +10,6 @@ import {
   Save,
   RefreshCw,
   Building2,
-  Calendar,
 } from 'lucide-react';
 import { newItemRequestApi } from '../../api/newItemRequest.api';
 import { masterApi } from '../../api/master.api';
@@ -58,7 +57,7 @@ export default function PenentuanCoaSection() {
   const [submittingModal, setSubmittingModal] = useState(false);
 
   // Load Queue Data
-  const loadQueue = async () => {
+  const loadQueue = useCallback(async () => {
     setLoading(true);
     setErrorMsg('');
     try {
@@ -74,11 +73,11 @@ export default function PenentuanCoaSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, search]);
 
   useEffect(() => {
     loadQueue();
-  }, [statusFilter]);
+  }, [loadQueue]);
 
   // Load Master COA for Dropdown
   const loadCoas = async () => {
