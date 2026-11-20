@@ -4,6 +4,7 @@ const {
   updateUserSchema,
   updateStatusSchema,
   updateUnitsSchema,
+  resetPasswordSchema,
 } = require('../validators/user.validator');
 
 const getUsers = async (req, res, next) => {
@@ -107,6 +108,27 @@ const updateUnits = async (req, res, next) => {
   }
 };
 
+const resetPassword = async (req, res, next) => {
+  try {
+    const parseResult = resetPasswordSchema.safeParse(req.body || {});
+    if (!parseResult.success) {
+      return res.status(422).json({
+        message: 'Validasi input gagal',
+        errors: parseResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const result = await userService.resetPassword(
+      req.params.id,
+      parseResult.data,
+      req.user.id
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getUsers,
   createUser,
@@ -114,5 +136,6 @@ module.exports = {
   updateUser,
   updateStatus,
   updateUnits,
+  resetPassword,
 };
 

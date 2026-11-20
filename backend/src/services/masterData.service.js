@@ -331,6 +331,17 @@ const getReferenceData = async () => {
   return await referenceRepository.getAllReferenceData();
 };
 
+// --- PRICE HISTORY ---
+const getItemPriceHistory = async (itemId, companyId = null) => {
+  const item = await itemRepository.findById(itemId);
+  if (!item) {
+    const error = new Error('Barang tidak ditemukan');
+    error.status = 404;
+    throw error;
+  }
+  return await itemRepository.getPriceHistory(itemId, companyId);
+};
+
 module.exports = {
   listItems,
   getItemDetail,
@@ -338,6 +349,7 @@ module.exports = {
   updateItem,
   updateItemPrices,
   updateItemStatus,
+  getItemPriceHistory,
   listCoas,
   getCoaDetail,
   createCoa,

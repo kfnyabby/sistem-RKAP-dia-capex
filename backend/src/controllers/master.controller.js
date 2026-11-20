@@ -67,6 +67,15 @@ const updateItemPrices = async (req, res, next) => {
   }
 };
 
+const getItemPriceHistory = async (req, res, next) => {
+  try {
+    const data = await masterDataService.getItemPriceHistory(req.params.id, req.query.company_id);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Quality Report
 const getQualityReport = async (req, res, next) => {
   try {
@@ -191,6 +200,7 @@ module.exports = {
   updateItem,
   updateItemPrices,
   updateItemStatus,
+  getItemPriceHistory,
   getQualityReport,
   getCoas,
   getCoaDetail,

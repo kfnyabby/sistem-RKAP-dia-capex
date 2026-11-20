@@ -20,6 +20,7 @@ router.post(
 router.get('/items', masterController.getItems);
 router.post('/items', requireRole(['akuntansi']), masterController.createItem);
 router.get('/items/:id', masterController.getItemDetail);
+router.get('/items/:id/price-history', requireRole(['akuntansi']), masterController.getItemPriceHistory);
 router.put('/items/:id', requireRole(['akuntansi']), masterController.updateItem);
 router.patch('/items/:id/prices', requireRole(['akuntansi']), masterController.updateItemPrices);
 router.patch('/items/:id/status', requireRole(['akuntansi']), masterController.updateItemStatus);
