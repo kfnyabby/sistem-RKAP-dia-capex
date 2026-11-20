@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Entry Diklat dan Tenaga</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1F2233;background:#FAF7F2;font-size:14px}
+.app{display:flex;min-height:760px}
+.sb{width:208px;background:#232B4A;padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex:none}
+.sb b{color:#fff;font-size:15px;padding:0 10px 16px}
+.sb a{padding:10px;border-radius:6px;color:#D5D9EE;text-decoration:none}
+.sb a.on{background:#3A4577;color:#fff}
+.mn{flex:1;min-width:0;padding:24px 28px;display:flex;flex-direction:column;gap:16px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:20px}h2{margin:0 0 10px;font-size:15px}
+.card{background:#fff;border:1px solid #E6E0D6;border-radius:8px;padding:16px}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500}
+.ok{background:#DDF1E4;color:#14532D}.wn{background:#FBE8C8;color:#7A3E00}.bd{background:#F8D9D6;color:#8A1F1B}.nt{background:#ECE8F5;color:#3A3F63}
+.sc{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:#5E6070;padding:8px;border-bottom:1px solid #E6E0D6;white-space:nowrap}
+td{padding:8px;border-bottom:1px solid #F0EBE2}.r{text-align:right}
+.btn{background:#3D4E9C;color:#fff;border:0;border-radius:6px;padding:0 16px;font:inherit;min-height:44px;cursor:pointer}
+.b2{background:#fff;color:#3D4E9C;border:1px solid #3D4E9C}.b3{background:#fff;color:#8A1F1B;border:1px solid #8A1F1B}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.lb{font-size:12px;color:#5E6070}.vl{font-size:22px;font-weight:600;margin-top:4px}
+input,select,textarea{font:inherit;border:1px solid #B9B4C9;border-radius:6px;padding:9px;min-height:44px;box-sizing:border-box;background:#fff}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#5E6070}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+</style>
+</helmet>
+<div class="app">
+<nav class="sb" aria-label="Menu utama"><b>Sistem RKAP</b><a href="#">Dashboard</a><a href="#" class="on">Entry</a><a href="#">Proses</a><a href="#">Display</a><a href="#">Laporan</a><a href="#">Pengaturan</a></nav>
+<main class="mn">
+<div class="hd"><h1>Entry · Diklat &amp; Tenaga</h1><div style="display:flex;gap:8px"><span class="chip nt">[9220] MCU</span><span class="chip wn">Usulan MVP</span><span class="chip wn">Data contoh</span></div></div>
+<div class="card" style="background:#ECE8F5;border-color:#CFC8E6;color:#3A3F63">Dua jenis dalam satu form: Diklat (ada nilai rupiah) dan Tenaga Kerja (hanya jumlah orang, tanpa nilai). Nilai rupiah dikunci otomatis saat jenis Tenaga Kerja dipilih.</div>
+<div class="card sc"><table><tr><th>No.</th><th>Jenis</th><th>Kebutuhan</th><th class="r">Qty</th><th class="r">Nilai rupiah</th><th>Unit</th><th>Jadwal</th><th>Prioritas</th></tr>
+<tr><td>1</td><td>Diklat</td><td>Pelatihan/Workshop ATLM</td><td class="r">2</td><td class="r">3.000.000</td><td>[9241] Laboratorium</td><td>Apr</td><td><span class="chip nt">Improvement</span></td></tr>
+<tr><td>2</td><td>Diklat</td><td>Pelatihan Flebotomi</td><td class="r">1</td><td class="r">4.500.000</td><td>[9241] Laboratorium</td><td>Apr</td><td><span class="chip nt">Regulasi</span></td></tr>
+<tr><td>3</td><td>Tenaga Kerja</td><td>Tenaga admin</td><td class="r">1</td><td class="r">-</td><td>[9220] MCU</td><td>Mar</td><td><span class="chip nt">Keep Operation</span></td></tr>
+<tr><td>4</td><td>Diklat</td><td>Pelatihan dan Workshop</td><td class="r">1</td><td class="r">6.000.000</td><td>[9220] MCU</td><td>Sesuai jadwal pelaksanaan</td><td><span class="chip nt">Regulasi</span></td></tr></table></div>
+<div class="card"><h2>Tambah kebutuhan</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+<label for="dj">Jenis<select id="dj"><option>Diklat</option><option>Tenaga Kerja</option></select></label>
+<label for="dk">Kebutuhan<input id="dk" value="Pelatihan audiometri"></label>
+<label for="dq">Qty<input id="dq" value="2"></label>
+<label for="dn">Nilai rupiah<input id="dn" value="4000000"></label>
+<label for="dc">Jadwal<select id="dc"><option>Mei</option><option>Sesuai jadwal pelaksanaan</option></select></label>
+<label for="dp">Prioritas<select id="dp"><option>Regulasi</option><option>Improvement</option><option>Strategic</option><option>Keep Operation</option></select></label>
+<label for="ds">Strategi objektif<input id="ds"></label><label for="dkp">KPI<input id="dkp"></label><label for="dpk">Program kerja<input id="dpk"></label></div>
+<p style="margin:10px 0 0;font-size:13px;color:#5E6070">Perlu konfirmasi: nilai rupiah dihitung per peserta atau total kebutuhan, dan apakah “Sesuai jadwal pelaksanaan” tetap diizinkan sebagai jadwal.</p>
+<div style="display:flex;gap:8px;margin-top:12px"><button class="btn">Simpan baris</button><button class="btn b2">Ajukan ke Manager</button></div></div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":760}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

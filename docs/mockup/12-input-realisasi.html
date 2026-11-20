@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Input Realisasi</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1F2233;background:#FAF7F2;font-size:14px}
+.app{display:flex;min-height:760px}
+.sb{width:208px;background:#232B4A;padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex:none}
+.sb b{color:#fff;font-size:15px;padding:0 10px 16px}
+.sb a{padding:10px;border-radius:6px;color:#D5D9EE;text-decoration:none}
+.sb a.on{background:#3A4577;color:#fff}
+.mn{flex:1;min-width:0;padding:24px 28px;display:flex;flex-direction:column;gap:16px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:20px}h2{margin:0 0 10px;font-size:15px}
+.card{background:#fff;border:1px solid #E6E0D6;border-radius:8px;padding:16px}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500}
+.ok{background:#DDF1E4;color:#14532D}.wn{background:#FBE8C8;color:#7A3E00}.bd{background:#F8D9D6;color:#8A1F1B}.nt{background:#ECE8F5;color:#3A3F63}
+.sc{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:#5E6070;padding:8px;border-bottom:1px solid #E6E0D6;white-space:nowrap}
+td{padding:8px;border-bottom:1px solid #F0EBE2}.r{text-align:right}
+.btn{background:#3D4E9C;color:#fff;border:0;border-radius:6px;padding:0 16px;font:inherit;min-height:44px;cursor:pointer}
+.b2{background:#fff;color:#3D4E9C;border:1px solid #3D4E9C}.b3{background:#fff;color:#8A1F1B;border:1px solid #8A1F1B}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.lb{font-size:12px;color:#5E6070}.vl{font-size:22px;font-weight:600;margin-top:4px}
+input,select,textarea{font:inherit;border:1px solid #B9B4C9;border-radius:6px;padding:9px;min-height:44px;box-sizing:border-box;background:#fff}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#5E6070}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+</style>
+</helmet>
+<div class="app">
+<nav class="sb" aria-label="Menu utama" style="height: 1445px"><b>Sistem RKAP</b><a href="#">Dashboard</a><a href="#">Entry</a><a href="#" class="on">Proses</a><a href="#">Display</a><a href="#">Laporan</a><a href="#">Pengaturan</a></nav>
+<main class="mn">
+<div class="hd"><h1>Proses · Input Realisasi</h1><div style="display:flex;gap:8px"><span class="chip nt">Akuntansi · CN</span><span class="chip wn">Data contoh</span></div></div>
+<ol style="display:flex;gap:8px;list-style:none;margin:0;padding:0;flex-wrap:wrap"><li><span class="chip nt" style="padding: 8px 16px">1. Unggah</span></li><li><span class="chip nt" aria-current="step" style="padding: 8px 16px; font-weight: 700; text-decoration: underline">2. Pratinjau</span></li><li><span class="chip nt" style="padding: 8px 16px">3. Konfirmasi</span></li></ol>
+<div class="card"><h2>File daftar jurnal (xlsx)</h2><div class="row">
+<label for="co">Perusahaan<select id="co"><option>CN</option><option>CNH</option></select></label>
+<label for="fx">File daftar jurnal<input id="fx" type="file"></label>
+<label for="md">Bila bulan ini sudah pernah diunggah<select id="md"><option>Ganti data bulan ini (disarankan)</option><option>Tambahkan saja; lewati ID sub jurnal yang sama</option></select></label>
+<button class="btn b2">Unggah dan pratinjau</button></div>
+<p style="margin:10px 0 0;font-size:13px;color:#5E6070">Periode terdeteksi dari kolom TANGGAL: <b>Oktober 2026</b> (1 sampai 31 Okt). File ini 620.848 baris dan 71 MB; dibaca di latar belakang, halaman boleh ditinggalkan. Selesai dibaca dalam 2 menit 40 detik.</p></div>
+<div class="g4"><div class="card"><div class="lb">Baris dibaca</div><div class="vl">620.848</div></div>
+<div class="card"><div class="lb">Dipakai sebagai realisasi</div><div class="vl">85.558</div><div class="lb">85.502 biaya · 56 investasi</div></div>
+<div class="card"><div class="lb">Dilewati (bukan akun biaya/invest)</div><div class="vl">535.290</div><div class="lb">pendapatan, piutang, hutang, kas</div></div>
+<div class="card"><div class="lb">Baris biaya tanpa unit</div><div class="vl" style="color:#8A1F1B">41</div></div></div>
+<div class="card sc"><h2>Pratinjau baris yang dipakai</h2><table><tr><th>No.</th><th>Tanggal</th><th>No. jurnal</th><th>Unit</th><th>COA</th><th>Jenis</th><th>Uraian</th><th class="r">Debet</th><th class="r">Kredit</th><th class="r">Nilai (D − K)</th></tr>
+<tr><td>1</td><td>15 Okt</td><td>LOGBP-1939</td><td>INSTALASI RAWAT JALAN <span class="chip wn">Perlu dipetakan</span></td><td>5.8.3 Biaya Cetak &amp; Fotocopy</td><td><span class="chip nt">Biaya</span></td><td>Pemakaian 1939, (7) Amplop RSSG kecil</td><td class="r">265.773</td><td class="r">0</td><td class="r">265.773</td></tr>
+<tr><td>2</td><td>14 Okt</td><td>LOGBP-1932</td><td>[9026] REKAM MEDIK</td><td>5.8.3 Biaya Cetak &amp; Fotocopy</td><td><span class="chip nt">Biaya</span></td><td>Pemakaian 1932, (309) Amplop RSSG</td><td class="r">108.000</td><td class="r">0</td><td class="r">108.000</td></tr>
+<tr><td>3</td><td>15 Okt</td><td>LOGBP-1938</td><td>[8145] Penagihan</td><td>5.8.2 Biaya Alat Perkantoran</td><td><span class="chip nt">Biaya</span></td><td>Pemakaian 1938, (1306) Keyboard wireless</td><td class="r">688.563</td><td class="r">0</td><td class="r">688.563</td></tr>
+<tr><td>4</td><td>13 Okt</td><td>LOGBP-1919</td><td>[9140] INSTALASI RAWAT INAP</td><td>5.2.4 Suku Cadang Medis</td><td><span class="chip nt">Biaya</span></td><td>Pemakaian 1919, (1614) Manset dewasa</td><td class="r">39.782</td><td class="r">0</td><td class="r">39.782</td></tr>
+<tr><td>5</td><td>07 Okt</td><td>IBA-2997</td><td>[9185] KEMOTERAPI</td><td>1.2.1.1.4 Peralatan Medis</td><td><span class="chip nt">Investasi</span></td><td>Perpindahan COA fixed asset 2997</td><td class="r">35.000.001</td><td class="r">0</td><td class="r">35.000.001</td></tr>
+<tr><td>6</td><td>15 Okt</td><td>IBA-3003</td><td>[8017] PEMASARAN</td><td>1.2.1.1.6 Peralatan Non Medis</td><td><span class="chip nt">Investasi</span></td><td>Perpindahan COA fixed asset 3003</td><td class="r">8.899.000</td><td class="r">0</td><td class="r">8.899.000</td></tr></table></div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+<div class="card sc" style="flex:1;min-width:420px"><h2>Pemetaan unit</h2><table><tr><th>Nama unit di file</th><th class="r">Baris</th><th>Dipetakan ke</th></tr>
+<tr><td>INSTALASI RAWAT JALAN</td><td class="r">782</td><td><label for="m1" style="gap:0"><select id="m1" aria-label="Petakan INSTALASI RAWAT JALAN"><option>Pilih unit</option><option>[9170] Poli Rawat Jalan</option></select></label></td></tr>
+<tr><td>POLI SPESIALIS</td><td class="r">33</td><td><label for="m2" style="gap:0"><select id="m2" aria-label="Petakan POLI SPESIALIS"><option>Pilih unit</option></select></label></td></tr>
+<tr><td>Gudang Fixed Asset</td><td class="r">89</td><td><label for="m3" style="gap:0"><select id="m3" aria-label="Petakan Gudang Fixed Asset"><option>Pilih unit</option></select></label></td></tr></table>
+<p style="margin:10px 0 0;font-size:13px;color:#5E6070">Pemetaan disimpan dan dipakai lagi di unggahan berikutnya.</p></div>
+<div class="card" style="flex:1;min-width:420px"><h2>Kolom yang dipakai dari file</h2><table><tr><th>Kolom di file</th><th>Dipakai untuk</th></tr>
+<tr><td>TANGGAL</td><td>Bulan realisasi</td></tr><tr><td>ID SUB JURNAL, IDGL</td><td>Penanda unik baris dan nomor jurnal (mencegah data ganda)</td></tr>
+<tr><td>KODE COA, NAMA COA</td><td>COA; nama dicocokkan sebagai pengecekan</td></tr><tr><td>UNIT</td><td>Unit kerja (kode dalam kurung)</td></tr>
+<tr><td>DEBET, KREDIT</td><td>Nilai realisasi</td></tr><tr><td>KETERANGAN</td><td>Uraian; baris "Pemakaian" dibaca sebagai barang (opsional)</td></tr>
+<tr><td class="lb">Lainnya (CC, sub unit, operasional, penerima, waktu input)</td><td class="lb">Tidak dipakai</td></tr></table></div></div>
+<div class="card"><h2>Aturan hitung</h2>
+<p style="margin:0 0 6px"><b>Biaya:</b> nilai = DEBET − KREDIT pada akun 4.x dan 5.x, dijumlah per COA, unit, dan bulan.</p>
+<p style="margin:0 0 6px"><b>Investasi:</b> akun aset tetap (1.2.1.1.x). Aset dalam pelaksanaan (1.2.1.3) dipindah ke aset tetap lewat jurnal IBA, jadi hanya satu sisi yang dihitung agar tidak ganda. Daftar akun ini dapat diubah di Pengaturan.</p>
+<p style="margin:0"><b>Data ganda:</b> baris dengan ID sub jurnal yang sudah ada diganti, bukan ditambah.</p></div>
+<div style="display:flex;gap:8px"><button class="btn">Konfirmasi import</button><button class="btn b3">Batalkan</button></div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":760}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -421,7 +421,7 @@ export default function DocReviewModal({ doc, onClose, onSuccess }) {
                       </p>
                       {h.note && (
                         <div className="mt-2 text-xs bg-white p-2.5 rounded border border-[#E6E0D6] text-[#1F2233]">
-                          <b>Catatan:</b> "{h.note}"
+                          <b>Catatan:</b> &quot;{h.note}&quot;
                         </div>
                       )}
                     </div>
