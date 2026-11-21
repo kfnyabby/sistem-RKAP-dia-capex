@@ -30,6 +30,11 @@ export const userApi = {
     const res = await api.put(`/users/${id}/units`, { unit_ids });
     return res.data;
   },
+
+  resetPassword: async (id, new_password = '') => {
+    const res = await api.post(`/users/${id}/reset-password`, { new_password });
+    return res.data;
+  },
 };
 
 export default userApi;

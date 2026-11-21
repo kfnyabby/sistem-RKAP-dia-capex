@@ -4,17 +4,23 @@ import Chip from '../components/common/Chip';
 import Banner from '../components/common/Banner';
 import userApi from '../api/user.api';
 import { masterApi } from '../api/master.api';
+import { useAuth } from '../auth/AuthContext';
+import ResetPasswordModal from '../components/pengaturan/ResetPasswordModal';
 
 export default function PengaturanPenggunaPage() {
+  const { user: currentUser } = useAuth();
+
   // State data utama
   const [users, setUsers] = useState([]);
-  const [userUnitsMap, setUserUnitsMap] = useState({});
   const [allUnits, setAllUnits] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingUnits, setLoadingUnits] = useState(true);
 
   // State notifikasi banner
   const [feedback, setFeedback] = useState(null); // { type: 'ok' | 'bd', message: '' }
+
+  // State modal reset kata sandi
+  const [resetModalUser, setResetModalUser] = useState(null);
 
   // State mode form panel samping
   const [isEditing, setIsEditing] = useState(false);
@@ -48,26 +54,13 @@ export default function PengaturanPenggunaPage() {
     }
   }, []);
 
-  // 2. Ambil daftar pengguna dan detail unit masing-masing
+  // 2. Ambil daftar pengguna (menyertakan companies dan units dalam 1 kueri tanpa N+1)
   const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const res = await userApi.getUsers({ per_page: 100 });
       const userList = Array.isArray(res) ? res : (res?.data || []);
       setUsers(userList);
-
-      // Ambil detail unit & perusahaan untuk setiap pengguna non-akuntansi secara paralel
-      const detailsMap = {};
-      const detailPromises = userList.map(async (u) => {
-        try {
-          const detail = await userApi.getUserDetail(u.id);
-          detailsMap[u.id] = detail;
-        } catch {
-          detailsMap[u.id] = { companies: [], units: [] };
-        }
-      });
-      await Promise.allSettled(detailPromises);
-      setUserUnitsMap(detailsMap);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Gagal memuat daftar pengguna.';
       setFeedback({ type: 'bd', message: msg });
@@ -102,8 +95,7 @@ export default function PengaturanPenggunaPage() {
     setEditingUserId(user.id);
     setFeedback(null);
 
-    const userDetail = userUnitsMap[user.id];
-    const currentUnits = userDetail?.units || [];
+    const currentUnits = user.units || [];
     const unitIds = currentUnits.map((u) => u.id || u.unit_id);
 
     setFormData({
@@ -140,14 +132,13 @@ export default function PengaturanPenggunaPage() {
       const unitsToSave = isRoleAkuntansi ? [] : selectedUnitIds;
 
       if (isEditing) {
-        // Mode Ubah: Update profil lalu update penugasan unit
+        // Mode Ubah: Update profil sekaligus penugasan unit dalam 1 transaksi atomis
         await userApi.updateUser(editingUserId, {
           name: formData.name.trim(),
           email: formData.email.trim(),
           role: formData.role,
+          unit_ids: unitsToSave,
         });
-
-        await userApi.updateUnits(editingUserId, unitsToSave);
 
         setFeedback({
           type: 'ok',
@@ -208,14 +199,17 @@ export default function PengaturanPenggunaPage() {
     if (role === 'akuntansi') {
       return 'CN dan CNH';
     }
-    const details = userUnitsMap[user.id];
-    const companies = details?.companies || [];
+    const companies = user.companies || [];
     if (companies.length === 0) return '-';
-    const codes = [...new Set(companies.map((c) => c.code))];
+    const codes = [
+      ...new Set(
+        companies.map((c) => (typeof c === 'string' ? c : c.code || c.company_code))
+      ),
+    ].filter(Boolean);
     if (codes.includes('CN') && codes.includes('CNH')) {
       return 'CN dan CNH';
     }
-    return codes.join(', ');
+    return codes.length > 0 ? codes.join(', ') : '-';
   };
 
   // Helper tampilan kolom Unit Ditugaskan
@@ -224,15 +218,10 @@ export default function PengaturanPenggunaPage() {
     if (role === 'akuntansi') {
       return 'Semua unit';
     }
-    const details = userUnitsMap[user.id];
-    const units = details?.units || [];
+    const units = user.units || [];
     if (units.length === 0) return '- (Belum ada unit)';
     if (units.length === 1) return `[${units[0].code}] ${units[0].name}`;
 
-    const groupNames = [...new Set(units.map((u) => u.group_name).filter(Boolean))];
-    if (groupNames.length === 1) {
-      return `${groupNames[0]} (${units.length} unit)`;
-    }
     return `${units.length} unit ditugaskan`;
   };
 
@@ -368,6 +357,17 @@ export default function PengaturanPenggunaPage() {
                           >
                             Ubah
                           </button>
+                          {Number(u.id) !== Number(currentUser?.id || currentUser?.user_id) && (
+                            <button
+                              type="button"
+                              onClick={() => setResetModalUser(u)}
+                              className="btn b2"
+                              style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                              title="Atur ulang kata sandi pengguna ini"
+                            >
+                              Reset Sandi
+                            </button>
+                          )}
                           {u.is_active ? (
                             <button
                               type="button"
@@ -652,6 +652,16 @@ export default function PengaturanPenggunaPage() {
           </form>
         </div>
       </div>
+
+      {/* Modal Dialog Atur Ulang Kata Sandi */}
+      <ResetPasswordModal
+        isOpen={Boolean(resetModalUser)}
+        onClose={() => setResetModalUser(null)}
+        user={resetModalUser}
+        onSuccess={() => {
+          fetchUsers();
+        }}
+      />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import masterApi from '../../api/master.api';
 
@@ -13,8 +13,21 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-  const [auditLogs, setAuditLogs] = useState([]);
+  const [priceHistories, setPriceHistories] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const fetchHistory = useCallback(async (itemId) => {
+    setLoadingLogs(true);
+    try {
+      const res = await masterApi.getItemPriceHistory(itemId);
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      setPriceHistories(list);
+    } catch {
+      setPriceHistories([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (item?.id && isOpen) {
@@ -25,26 +38,9 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
       setErrorMsg(null);
       setSuccessMsg(null);
 
-      // Muat log audit untuk barang ini
-      setLoadingLogs(true);
-      masterApi
-        .getItemPriceAuditLogs(item.id)
-        .then((res) => {
-          const allLogs = res?.data || [];
-          // Filter log terkait item ini
-          const itemLogs = allLogs.filter(
-            (log) => Number(log.entity_id) === Number(item.id) || log.entity_id === String(item.id)
-          );
-          setAuditLogs(itemLogs);
-        })
-        .catch(() => {
-          setAuditLogs([]);
-        })
-        .finally(() => {
-          setLoadingLogs(false);
-        });
+      fetchHistory(item.id);
     }
-  }, [item, isOpen]);
+  }, [item, isOpen, fetchHistory]);
 
   if (!isOpen || !item) return null;
 
@@ -66,13 +62,8 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
       setSuccessMsg('Harga barang berhasil diperbarui');
       if (onSuccess) onSuccess();
 
-      // Segarkan log audit
-      masterApi.getItemPriceAuditLogs(item.id).then((res) => {
-        const itemLogs = (res?.data || []).filter(
-          (log) => Number(log.entity_id) === Number(item.id)
-        );
-        setAuditLogs(itemLogs);
-      });
+      // Segarkan riwayat harga
+      fetchHistory(item.id);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Gagal memperbarui harga barang');
     } finally {
@@ -97,7 +88,7 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
       <div
         className="card"
         style={{
-          maxWidth: '620px',
+          maxWidth: '680px',
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
@@ -203,48 +194,57 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
             </div>
           </div>
 
-          {/* Tabel Jejak Audit Pembaruan Harga */}
+          {/* Tabel Riwayat Harga Resmi (/api/items/:id/price-history) */}
           <div className="sc">
             <table>
               <thead>
                 <tr>
                   <th style={{ width: '40px' }}>No.</th>
                   <th>Waktu</th>
-                  <th>Aktor (Pengubah)</th>
-                  <th>Perubahan Nilai</th>
+                  <th>Perusahaan</th>
+                  <th style={{ textAlign: 'right' }}>Harga Lama</th>
+                  <th style={{ textAlign: 'right' }}>Harga Baru</th>
+                  <th>Sumber</th>
+                  <th>Diubah Oleh</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingLogs ? (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', color: '#5E6070' }}>
+                    <td colSpan="7" style={{ textAlign: 'center', color: '#5E6070' }}>
                       Memuat riwayat perubahan harga...
                     </td>
                   </tr>
-                ) : auditLogs.length === 0 ? (
+                ) : priceHistories.length === 0 ? (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', color: '#5E6070' }}>
-                      Belum ada catatan riwayat perubahan manual untuk barang ini.
+                    <td colSpan="7" style={{ textAlign: 'center', color: '#5E6070' }}>
+                      Belum ada catatan riwayat perubahan harga untuk barang ini.
                     </td>
                   </tr>
                 ) : (
-                  auditLogs.map((log, idx) => {
-                    const pricesVal = Array.isArray(log.new_value)
-                      ? log.new_value.map((p) => `${p.company_code}: Rp ${formatNumber(p.price)}`).join(', ')
-                      : JSON.stringify(log.new_value || '-');
-                    return (
-                      <tr key={log.id || idx}>
-                        <td>{idx + 1}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          {new Date(log.created_at || log.at).toLocaleString('id-ID')}
-                        </td>
-                        <td>{log.actor_name || log.actor_email || 'Akuntansi'}</td>
-                        <td>
-                          <span className="chip ok" style={{ fontSize: '11px' }}>{pricesVal}</span>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  priceHistories.map((h, idx) => (
+                    <tr key={h.id || idx}>
+                      <td>{idx + 1}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {new Date(h.created_at).toLocaleString('id-ID')}
+                      </td>
+                      <td>
+                        <span className="chip nt" style={{ fontSize: '11px' }}>{h.company_code}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {h.old_price != null ? `Rp ${formatNumber(h.old_price)}` : '-'}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        Rp {formatNumber(h.new_price)}
+                      </td>
+                      <td>
+                        <span className={`chip ${h.source === 'import' ? 'wn' : 'ok'}`} style={{ fontSize: '11px' }}>
+                          {h.source === 'import' ? 'Import Excel' : 'Ubah Manual'}
+                        </span>
+                      </td>
+                      <td>{h.user_name || 'Akuntansi'}</td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

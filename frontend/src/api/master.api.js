@@ -43,7 +43,7 @@ export const masterApi = {
     formData.append('dry_run', dry_run);
     if (options.company_code) formData.append('company_code', options.company_code);
     if (options.update_prices !== undefined) formData.append('update_prices', options.update_prices);
-    const res = await api.post('/items/import', formData, {
+    const res = await api.post(`/items/import?dry_run=${dry_run ? 'true' : 'false'}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -81,7 +81,7 @@ export const masterApi = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('dry_run', dry_run);
-    const res = await api.post('/coas/import', formData, {
+    const res = await api.post(`/coas/import?dry_run=${dry_run ? 'true' : 'false'}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -120,7 +120,7 @@ export const masterApi = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('dry_run', dry_run);
-    const res = await api.post('/units/import', formData, {
+    const res = await api.post(`/units/import?dry_run=${dry_run ? 'true' : 'false'}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -131,6 +131,12 @@ export const masterApi = {
   // --- REFERENCE DATA ---
   getReferenceData: async () => {
     const res = await api.get('/reference-data');
+    return res.data;
+  },
+
+  // --- ITEM PRICE HISTORY ---
+  getItemPriceHistory: async (id, params = {}) => {
+    const res = await api.get(`/items/${id}/price-history`, { params });
     return res.data;
   },
 
