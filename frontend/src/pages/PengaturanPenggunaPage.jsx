@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
 import Banner from '../components/common/Banner';
@@ -9,12 +10,25 @@ import ResetPasswordModal from '../components/pengaturan/ResetPasswordModal';
 
 export default function PengaturanPenggunaPage() {
   const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
 
-  // State data utama
-  const [users, setUsers] = useState([]);
-  const [allUnits, setAllUnits] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingUnits, setLoadingUnits] = useState(true);
+  // 1. Ambil daftar master unit untuk pilihan penugasan via TanStack Query
+  const { data: unitsResponse, isLoading: loadingUnits } = useQuery({
+    queryKey: ['units', 'active'],
+    queryFn: () => masterApi.getUnits({ is_active: true }),
+  });
+  const allUnits = useMemo(() => {
+    return Array.isArray(unitsResponse) ? unitsResponse : (unitsResponse?.data || []);
+  }, [unitsResponse]);
+
+  // 2. Ambil daftar pengguna via TanStack Query (bebas N+1)
+  const { data: usersResponse, isLoading: loadingUsers } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => userApi.getUsers({ per_page: 100 }),
+  });
+  const users = useMemo(() => {
+    return Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || []);
+  }, [usersResponse]);
 
   // State notifikasi banner
   const [feedback, setFeedback] = useState(null); // { type: 'ok' | 'bd', message: '' }
@@ -39,40 +53,6 @@ export default function PengaturanPenggunaPage() {
   // State filter pemilihan unit di panel samping
   const [unitSearch, setUnitSearch] = useState('');
   const [unitCompanyFilter, setUnitCompanyFilter] = useState('ALL'); // 'ALL' | 'CN' | 'CNH'
-
-  // 1. Ambil daftar master unit untuk pilihan penugasan
-  const fetchUnits = useCallback(async () => {
-    try {
-      setLoadingUnits(true);
-      const res = await masterApi.getUnits({ is_active: true });
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      setAllUnits(list);
-    } catch (err) {
-      console.warn('Gagal memuat master unit:', err.message);
-    } finally {
-      setLoadingUnits(false);
-    }
-  }, []);
-
-  // 2. Ambil daftar pengguna (menyertakan companies dan units dalam 1 kueri tanpa N+1)
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoadingUsers(true);
-      const res = await userApi.getUsers({ per_page: 100 });
-      const userList = Array.isArray(res) ? res : (res?.data || []);
-      setUsers(userList);
-    } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Gagal memuat daftar pengguna.';
-      setFeedback({ type: 'bd', message: msg });
-    } finally {
-      setLoadingUsers(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-    fetchUnits();
-  }, [fetchUsers, fetchUnits]);
 
   // Helper reset formulir kembali ke mode tambah baru
   const resetForm = () => {
@@ -162,7 +142,7 @@ export default function PengaturanPenggunaPage() {
         resetForm();
       }
 
-      await fetchUsers();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (err) {
       const status = err.response?.status;
       let msg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan data.';
@@ -186,7 +166,7 @@ export default function PengaturanPenggunaPage() {
         type: 'ok',
         message: `Pengguna "${user.name}" berhasil ${targetStatus ? 'diaktifkan kembali' : 'dinonaktifkan'}.`,
       });
-      await fetchUsers();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Gagal memperbarui status pengguna.';
       setFeedback({ type: 'bd', message: msg });
@@ -659,7 +639,7 @@ export default function PengaturanPenggunaPage() {
         onClose={() => setResetModalUser(null)}
         user={resetModalUser}
         onSuccess={() => {
-          fetchUsers();
+          queryClient.invalidateQueries({ queryKey: ['users'] });
         }}
       />
     </>

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
 import masterApi from '../api/master.api';
@@ -10,19 +11,10 @@ import CoaFormModal from '../components/master/CoaFormModal';
 import UnitFormModal from '../components/master/UnitFormModal';
 
 export default function PengaturanMasterPage() {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('barang'); // 'barang' | 'coa' | 'kategori_biaya' | 'kategori_investasi' | 'unit' | 'referensi'
 
-  // Master Data States
-  const [qualityReport, setQualityReport] = useState(null);
-  const [references, setReferences] = useState(null);
-  const [coaList, setCoaList] = useState([]);
-  const [coaGroups, setCoaGroups] = useState([]);
-  const [investmentCategories, setInvestmentCategories] = useState([]);
-  const [unitList, setUnitList] = useState([]);
-
   // Items State (Pagination dari server: ±3.200 baris)
-  const [items, setItems] = useState([]);
-  const [totalItems, setTotalItems] = useState(0);
   const [itemPage, setItemPage] = useState(1);
   const [itemLimit, setItemLimit] = useState(20);
   const [itemSearch, setItemSearch] = useState('');
@@ -30,7 +22,6 @@ export default function PengaturanMasterPage() {
   const [itemCoaFilter, setItemCoaFilter] = useState('');
   const [itemGroupFilter, setItemGroupFilter] = useState('');
   const [itemStatusFilter, setItemStatusFilter] = useState('');
-  const [loadingItems, setLoadingItems] = useState(false);
 
   // COA Filter State
   const [coaSearch, setCoaSearch] = useState('');
@@ -59,83 +50,73 @@ export default function PengaturanMasterPage() {
     return () => clearTimeout(handler);
   }, [itemSearch]);
 
-  // Load General Master Data
-  const loadGeneralData = useCallback(async () => {
-    try {
-      const [qrRes, refRes, groupsRes, invRes] = await Promise.all([
-        masterApi.getQualityReport(),
-        masterApi.getReferenceData(),
-        masterApi.getCoaGroups(),
-        masterApi.getInvestmentCategories(),
-      ]);
-      setQualityReport(qrRes || null);
-      setReferences(refRes || null);
-      setCoaGroups(groupsRes?.data || []);
-      setInvestmentCategories(invRes?.data || []);
-    } catch (err) {
-      console.error('Gagal memuat master referensi umum:', err);
-    }
-  }, []);
+  // 1. Quality Report via TanStack Query
+  const { data: qualityReport } = useQuery({
+    queryKey: ['qualityReport'],
+    queryFn: masterApi.getQualityReport,
+  });
 
-  useEffect(() => {
-    loadGeneralData();
-  }, [loadGeneralData]);
+  // 2. Reference Data via TanStack Query
+  const { data: references } = useQuery({
+    queryKey: ['references'],
+    queryFn: masterApi.getReferenceData,
+  });
 
-  // Load All COAs (untuk dropdown & Tab COA)
-  const loadCoas = useCallback(async () => {
-    try {
-      const res = await masterApi.getCoas({ per_page: 500 });
-      setCoaList(res?.data || []);
-    } catch (err) {
-      console.error('Gagal memuat daftar COA:', err);
-    }
-  }, []);
+  // 3. COA Groups via TanStack Query
+  const { data: coaGroupsResponse } = useQuery({
+    queryKey: ['coaGroups'],
+    queryFn: masterApi.getCoaGroups,
+  });
+  const coaGroups = useMemo(() => coaGroupsResponse?.data || [], [coaGroupsResponse]);
 
-  useEffect(() => {
-    loadCoas();
-  }, [loadCoas]);
+  // 4. Investment Categories via TanStack Query
+  const { data: invCategoriesResponse } = useQuery({
+    queryKey: ['investmentCategories'],
+    queryFn: masterApi.getInvestmentCategories,
+  });
+  const investmentCategories = useMemo(
+    () => invCategoriesResponse?.data || [],
+    [invCategoriesResponse]
+  );
 
-  // Load Units (untuk Tab Unit)
-  const loadUnits = useCallback(async () => {
-    try {
-      const res = await masterApi.getUnits({});
-      setUnitList(res?.data || []);
-    } catch (err) {
-      console.error('Gagal memuat daftar unit:', err);
-    }
-  }, []);
+  // 5. Load All COAs via TanStack Query (untuk dropdown & Tab COA)
+  const { data: coasResponse } = useQuery({
+    queryKey: ['coas'],
+    queryFn: () => masterApi.getCoas({ per_page: 500 }),
+  });
+  const coaList = useMemo(() => coasResponse?.data || [], [coasResponse]);
 
-  useEffect(() => {
-    loadUnits();
-  }, [loadUnits]);
+  // 6. Load Units via TanStack Query (untuk Tab Unit)
+  const { data: unitsResponse } = useQuery({
+    queryKey: ['units'],
+    queryFn: () => masterApi.getUnits({}),
+  });
+  const unitList = useMemo(() => unitsResponse?.data || [], [unitsResponse]);
 
-  // Load Items (Server Pagination ±3.200 baris)
-  const loadItems = useCallback(async () => {
-    setLoadingItems(true);
-    try {
-      const params = {
+  // 7. Load Items via TanStack Query (Server Pagination ±3.200 baris)
+  const { data: itemsResponse, isLoading: loadingItems } = useQuery({
+    queryKey: [
+      'items',
+      itemPage,
+      itemLimit,
+      debouncedSearch,
+      itemCoaFilter,
+      itemGroupFilter,
+      itemStatusFilter,
+    ],
+    queryFn: () =>
+      masterApi.getItems({
         page: itemPage,
         per_page: itemLimit,
         q: debouncedSearch || undefined,
         coa_id: itemCoaFilter || undefined,
         group_name: itemGroupFilter || undefined,
         is_active: itemStatusFilter !== '' ? itemStatusFilter : undefined,
-      };
-      const res = await masterApi.getItems(params);
-      setItems(res?.data || []);
-      setTotalItems(res?.total || 0);
-    } catch (err) {
-      console.error('Gagal memuat data barang:', err);
-      setItems([]);
-      setTotalItems(0);
-    } finally {
-      setLoadingItems(false);
-    }
-  }, [itemPage, itemLimit, debouncedSearch, itemCoaFilter, itemGroupFilter, itemStatusFilter]);
+      }),
+  });
 
-  useEffect(() => {
-    loadItems();
-  }, [loadItems]);
+  const items = useMemo(() => itemsResponse?.data || [], [itemsResponse]);
+  const totalItems = itemsResponse?.total || 0;
 
   const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num || 0);
 
@@ -941,10 +922,11 @@ export default function PengaturanMasterPage() {
         type={importDialog.type}
         onClose={() => setImportDialog({ open: false, type: 'items' })}
         onSuccess={() => {
-          loadItems();
-          loadCoas();
-          loadUnits();
-          loadGeneralData();
+          queryClient.invalidateQueries({ queryKey: ['items'] });
+          queryClient.invalidateQueries({ queryKey: ['coas'] });
+          queryClient.invalidateQueries({ queryKey: ['units'] });
+          queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
+          queryClient.invalidateQueries({ queryKey: ['references'] });
         }}
       />
 
@@ -954,7 +936,8 @@ export default function PengaturanMasterPage() {
         item={priceModal.item}
         onClose={() => setPriceModal({ open: false, item: null })}
         onSuccess={() => {
-          loadItems();
+          queryClient.invalidateQueries({ queryKey: ['items'] });
+          queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
         }}
       />
 
@@ -966,8 +949,8 @@ export default function PengaturanMasterPage() {
         groupList={references?.item_groups || []}
         onClose={() => setItemModal({ open: false, item: null })}
         onSuccess={() => {
-          loadItems();
-          loadGeneralData();
+          queryClient.invalidateQueries({ queryKey: ['items'] });
+          queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
         }}
       />
 
@@ -978,7 +961,7 @@ export default function PengaturanMasterPage() {
         coaList={coaList.filter((c) => c.category === 'biaya' || c.code.startsWith('5.4'))}
         onClose={() => setInvModal({ open: false, category: null })}
         onSuccess={() => {
-          loadGeneralData();
+          queryClient.invalidateQueries({ queryKey: ['investmentCategories'] });
         }}
       />
 
@@ -989,8 +972,8 @@ export default function PengaturanMasterPage() {
         groupList={coaGroups}
         onClose={() => setCoaModal({ open: false, coa: null })}
         onSuccess={() => {
-          loadCoas();
-          loadGeneralData();
+          queryClient.invalidateQueries({ queryKey: ['coas'] });
+          queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
         }}
       />
 
@@ -1002,7 +985,7 @@ export default function PengaturanMasterPage() {
         companies={references?.companies || []}
         onClose={() => setUnitModal({ open: false, unit: null })}
         onSuccess={() => {
-          loadUnits();
+          queryClient.invalidateQueries({ queryKey: ['units'] });
         }}
       />
     </>
