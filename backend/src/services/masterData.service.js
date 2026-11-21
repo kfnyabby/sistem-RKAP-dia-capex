@@ -342,6 +342,130 @@ const getItemPriceHistory = async (itemId, companyId = null) => {
   return await itemRepository.getPriceHistory(itemId, companyId);
 };
 
+// --- DELETE OPERATIONS (SAFE DELETION WITH DEPENDENCY CHECK & AUDIT) ---
+const deleteItem = async (id, actorId) => {
+  const existing = await itemRepository.findById(id);
+  if (!existing) {
+    const error = new Error('Barang tidak ditemukan');
+    error.status = 404;
+    throw error;
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const ref = await itemRepository.countReferences(id, client);
+    if (ref.total > 0) {
+      const details = [];
+      if (ref.expense_lines > 0) details.push(`${ref.expense_lines} baris anggaran biaya`);
+      if (ref.journal_lines > 0) details.push(`${ref.journal_lines} baris jurnal realisasi`);
+      if (ref.new_item_requests > 0) details.push(`${ref.new_item_requests} usulan barang baru`);
+
+      const error = new Error(
+        `Barang "${existing.name}" tidak dapat dihapus permanen karena sudah memiliki riwayat (${details.join(', ')}). Silakan nonaktifkan status barang agar tidak dapat dipilih lagi.`
+      );
+      error.status = 409;
+      error.can_deactivate = true;
+      throw error;
+    }
+
+    await itemRepository.deleteItem(id, client);
+    await auditService.log(actorId, 'items', id, 'delete_item', existing, null, client);
+
+    await client.query('COMMIT');
+    return { success: true, message: `Barang "${existing.name}" berhasil dihapus permanen.` };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+const deleteCoa = async (id, actorId) => {
+  const existing = await coaRepository.findById(id);
+  if (!existing) {
+    const error = new Error('COA tidak ditemukan');
+    error.status = 404;
+    throw error;
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const ref = await coaRepository.countReferences(id, client);
+    if (ref.total > 0) {
+      const details = [];
+      if (ref.items > 0) details.push(`${ref.items} master barang`);
+      if (ref.investment_lines > 0) details.push(`${ref.investment_lines} baris anggaran investasi`);
+      if (ref.categories > 0) details.push(`${ref.categories} kategori investasi`);
+      if (ref.journal_lines > 0) details.push(`${ref.journal_lines} baris jurnal realisasi`);
+      if (ref.new_item_requests > 0) details.push(`${ref.new_item_requests} usulan barang`);
+
+      const error = new Error(
+        `Akun COA "${existing.code} - ${existing.name}" tidak dapat dihapus permanen karena masih digunakan (${details.join(', ')}). Silakan nonaktifkan akun agar tidak dapat dipilih lagi.`
+      );
+      error.status = 409;
+      error.can_deactivate = true;
+      throw error;
+    }
+
+    await coaRepository.deleteCoa(id, client);
+    await auditService.log(actorId, 'coas', id, 'delete_coa', existing, null, client);
+
+    await client.query('COMMIT');
+    return { success: true, message: `Akun COA "${existing.code} - ${existing.name}" berhasil dihapus permanen.` };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+const deleteUnit = async (id, actorId) => {
+  const existing = await unitRepository.findById(id);
+  if (!existing) {
+    const error = new Error('Unit tidak ditemukan');
+    error.status = 404;
+    throw error;
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const ref = await unitRepository.countReferences(id, client);
+    if (ref.total > 0) {
+      const details = [];
+      if (ref.budget_docs > 0) details.push(`${ref.budget_docs} dokumen anggaran`);
+      if (ref.journal_lines > 0) details.push(`${ref.journal_lines} baris jurnal realisasi`);
+      if (ref.user_units > 0) details.push(`${ref.user_units} penugasan pengguna`);
+      if (ref.new_item_requests > 0) details.push(`${ref.new_item_requests} usulan barang`);
+
+      const error = new Error(
+        `Unit "${existing.code} - ${existing.name}" tidak dapat dihapus permanen karena masih digunakan (${details.join(', ')}). Silakan nonaktifkan unit agar tidak dapat dipilih lagi.`
+      );
+      error.status = 409;
+      error.can_deactivate = true;
+      throw error;
+    }
+
+    await unitRepository.deleteUnit(id, client);
+    await auditService.log(actorId, 'units', id, 'delete_unit', existing, null, client);
+
+    await client.query('COMMIT');
+    return { success: true, message: `Unit "${existing.code} - ${existing.name}" berhasil dihapus permanen.` };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   listItems,
   getItemDetail,
@@ -349,17 +473,20 @@ module.exports = {
   updateItem,
   updateItemPrices,
   updateItemStatus,
+  deleteItem,
   getItemPriceHistory,
   listCoas,
   getCoaDetail,
   createCoa,
   updateCoa,
+  deleteCoa,
   listCoaGroups,
   listInvestmentCategories,
   updateInvestmentCategory,
   listUnits,
   createUnit,
   updateUnit,
+  deleteUnit,
   getReferenceData,
 };
 

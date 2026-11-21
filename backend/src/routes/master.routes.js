@@ -22,6 +22,7 @@ router.post('/items', requireRole(['akuntansi']), masterController.createItem);
 router.get('/items/:id', masterController.getItemDetail);
 router.get('/items/:id/price-history', requireRole(['akuntansi']), masterController.getItemPriceHistory);
 router.put('/items/:id', requireRole(['akuntansi']), masterController.updateItem);
+router.delete('/items/:id', requireRole(['akuntansi']), masterController.deleteItem);
 router.patch('/items/:id/prices', requireRole(['akuntansi']), masterController.updateItemPrices);
 router.patch('/items/:id/status', requireRole(['akuntansi']), masterController.updateItemStatus);
 
@@ -36,6 +37,7 @@ router.get('/coas', masterController.getCoas);
 router.post('/coas', requireRole(['akuntansi']), masterController.createCoa);
 router.get('/coas/:id', masterController.getCoaDetail);
 router.put('/coas/:id', requireRole(['akuntansi']), masterController.updateCoa);
+router.delete('/coas/:id', requireRole(['akuntansi']), masterController.deleteCoa);
 router.get('/coa-groups', masterController.getCoaGroups);
 
 // --- INVESTMENT CATEGORIES ---
@@ -56,6 +58,7 @@ router.post(
 router.get('/units', masterController.getUnits);
 router.post('/units', requireRole(['akuntansi']), masterController.createUnit);
 router.put('/units/:id', requireRole(['akuntansi']), masterController.updateUnit);
+router.delete('/units/:id', requireRole(['akuntansi']), masterController.deleteUnit);
 
 // --- REFERENCE DATA ---
 router.get('/reference-data', masterController.getReferenceData);

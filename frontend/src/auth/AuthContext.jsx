@@ -47,16 +47,27 @@ export function AuthProvider({ children }) {
 
   // Fungsi Login
   const login = async (email, password) => {
-    // Pastikan CSRF token sudah tersedia sebelum request POST
-    let token = csrfTokenState;
-    if (!token) {
-      token = await fetchCsrf();
-    }
+    // Selalu ambil token CSRF segar sebelum login untuk menjamin
+    // sesi di cookie browser dan server sinkron 100%
+    await fetchCsrf();
 
-    const res = await api.post('/auth/login', { email, password });
-    const loggedInUser = res.data.user;
-    setUser(loggedInUser);
-    return loggedInUser;
+    try {
+      const res = await api.post('/auth/login', { email, password });
+
+      // Simpan token CSRF baru yang diterbitkan backend setelah regenerasi sesi
+      if (res.data?.csrf_token) {
+        setCsrfToken(res.data.csrf_token);
+        setCsrfTokenState(res.data.csrf_token);
+      }
+
+      const loggedInUser = res.data.user;
+      setUser(loggedInUser);
+      return loggedInUser;
+    } catch (err) {
+      // Jika login gagal, segarkan token CSRF agar percobaan berikutnya tidak terkunci
+      await fetchCsrf();
+      throw err;
+    }
   };
 
   // Fungsi Logout

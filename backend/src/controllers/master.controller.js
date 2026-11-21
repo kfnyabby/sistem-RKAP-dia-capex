@@ -193,6 +193,33 @@ const getReferenceData = async (req, res, next) => {
   }
 };
 
+const deleteItem = async (req, res, next) => {
+  try {
+    const result = await masterDataService.deleteItem(req.params.id, req.user.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteCoa = async (req, res, next) => {
+  try {
+    const result = await masterDataService.deleteCoa(req.params.id, req.user.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const deleteUnit = async (req, res, next) => {
+  try {
+    const result = await masterDataService.deleteUnit(req.params.id, req.user.id);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getItems,
   getItemDetail,
@@ -200,18 +227,21 @@ module.exports = {
   updateItem,
   updateItemPrices,
   updateItemStatus,
+  deleteItem,
   getItemPriceHistory,
   getQualityReport,
   getCoas,
   getCoaDetail,
   createCoa,
   updateCoa,
+  deleteCoa,
   getCoaGroups,
   getInvestmentCategories,
   updateInvestmentCategory,
   getUnits,
   createUnit,
   updateUnit,
+  deleteUnit,
   getReferenceData,
 };
 

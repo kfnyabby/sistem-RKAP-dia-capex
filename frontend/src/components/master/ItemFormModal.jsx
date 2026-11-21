@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import masterApi from '../../api/master.api';
 
-export default function ItemFormModal({ isOpen, onClose, item, coaList = [], groupList = [], onSuccess }) {
+export default function ItemFormModal({ isOpen, onClose, item, coaList = [], groupList = [], onSuccess, onDelete }) {
   const [formData, setFormData] = useState({
     code: '',
     product_code: '',
@@ -266,7 +266,21 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], gro
               <span>Barang Aktif (tersedia untuk pengajuan anggaran unit)</span>
             </label>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
+              {item?.id && onDelete && (
+                <button
+                  type="button"
+                  className="btn b3"
+                  style={{ marginRight: 'auto' }}
+                  onClick={() => {
+                    onClose();
+                    onDelete(item);
+                  }}
+                  disabled={loading}
+                >
+                  Hapus Barang
+                </button>
+              )}
               <button type="submit" className="btn" disabled={loading}>
                 {loading ? 'Menyimpan...' : (item?.id ? 'Simpan Perubahan' : 'Tambahkan Barang')}
               </button>
@@ -288,4 +302,5 @@ ItemFormModal.propTypes = {
   coaList: PropTypes.array,
   groupList: PropTypes.array,
   onSuccess: PropTypes.func,
+  onDelete: PropTypes.func,
 };

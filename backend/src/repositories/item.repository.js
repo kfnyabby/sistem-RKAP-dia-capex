@@ -431,6 +431,24 @@ const getAvailableForDoc = async (docId, companyId, periodIdOrParams = {}, maybe
   };
 };
 
+const countReferences = async (id, client = db) => {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*)::int FROM expense_lines WHERE item_id = $1) AS expense_lines,
+      (SELECT COUNT(*)::int FROM journal_lines WHERE item_id = $1) AS journal_lines,
+      (SELECT COUNT(*)::int FROM new_item_requests WHERE item_id = $1) AS new_item_requests
+  `;
+  const res = await client.query(sql, [id]);
+  const row = res.rows[0] || { expense_lines: 0, journal_lines: 0, new_item_requests: 0 };
+  const total = row.expense_lines + row.journal_lines + row.new_item_requests;
+  return { ...row, total };
+};
+
+const deleteItem = async (id, client = db) => {
+  const res = await client.query('DELETE FROM items WHERE id = $1 RETURNING *', [id]);
+  return res.rows[0] || null;
+};
+
 module.exports = {
   findAll,
   findById,
@@ -442,5 +460,7 @@ module.exports = {
   updateStatus,
   getQualityMetrics,
   getAvailableForDoc,
+  countReferences,
+  deleteItem,
 };
 

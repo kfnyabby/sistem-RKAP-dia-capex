@@ -63,12 +63,54 @@ export default function AppShell() {
         </NavLink>
 
         {isAkuntansi && (
-          <NavLink
-            to="/pengaturan/master"
-            className={() => (location.pathname.startsWith('/pengaturan') ? 'on' : '')}
-          >
-            Pengaturan
-          </NavLink>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <NavLink
+              to="/pengaturan/master"
+              className={() => (location.pathname.startsWith('/pengaturan') ? 'on' : '')}
+            >
+              Pengaturan
+            </NavLink>
+            {location.pathname.startsWith('/pengaturan') && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  paddingLeft: '12px',
+                  marginTop: '2px',
+                }}
+              >
+                <NavLink
+                  to="/pengaturan/master"
+                  className={({ isActive }) => (isActive ? 'on' : '')}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                >
+                  · Master Data
+                </NavLink>
+                <NavLink
+                  to="/pengaturan/pengguna"
+                  className={({ isActive }) => (isActive ? 'on' : '')}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                >
+                  · Pengguna &amp; Unit
+                </NavLink>
+                <NavLink
+                  to="/pengaturan/periode"
+                  className={({ isActive }) => (isActive ? 'on' : '')}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                >
+                  · Periode
+                </NavLink>
+                <NavLink
+                  to="/pengaturan/audit"
+                  className={({ isActive }) => (isActive ? 'on' : '')}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                >
+                  · Jejak Audit
+                </NavLink>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="sb-footer">

@@ -22,6 +22,11 @@ export const masterApi = {
     return res.data;
   },
 
+  deleteItem: async (id) => {
+    const res = await api.delete(`/items/${id}`);
+    return res.data;
+  },
+
   updateItemStatus: async (id, is_active) => {
     const res = await api.patch(`/items/${id}/status`, { is_active });
     return res.data;
@@ -72,6 +77,11 @@ export const masterApi = {
     return res.data;
   },
 
+  deleteCoa: async (id) => {
+    const res = await api.delete(`/coas/${id}`);
+    return res.data;
+  },
+
   getCoaGroups: async () => {
     const res = await api.get('/coa-groups');
     return res.data;
@@ -113,6 +123,11 @@ export const masterApi = {
 
   updateUnit: async (id, data) => {
     const res = await api.put(`/units/${id}`, data);
+    return res.data;
+  },
+
+  deleteUnit: async (id) => {
+    const res = await api.delete(`/units/${id}`);
     return res.data;
   },
 

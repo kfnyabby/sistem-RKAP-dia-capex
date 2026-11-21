@@ -142,6 +142,26 @@ const findGroupsWithCounts = async (client = db) => {
   return res.rows;
 };
 
+const countReferences = async (id, client = db) => {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*)::int FROM items WHERE coa_id = $1 OR inventory_coa_id = $1) AS items,
+      (SELECT COUNT(*)::int FROM investment_lines WHERE coa_id = $1) AS investment_lines,
+      (SELECT COUNT(*)::int FROM investment_categories WHERE depreciation_coa_id = $1) AS categories,
+      (SELECT COUNT(*)::int FROM journal_lines WHERE coa_id = $1) AS journal_lines,
+      (SELECT COUNT(*)::int FROM new_item_requests WHERE assigned_coa_id = $1) AS new_item_requests
+  `;
+  const res = await client.query(sql, [id]);
+  const row = res.rows[0] || { items: 0, investment_lines: 0, categories: 0, journal_lines: 0, new_item_requests: 0 };
+  const total = row.items + row.investment_lines + row.categories + row.journal_lines + row.new_item_requests;
+  return { ...row, total };
+};
+
+const deleteCoa = async (id, client = db) => {
+  const res = await client.query('DELETE FROM coas WHERE id = $1 RETURNING *', [id]);
+  return res.rows[0] || null;
+};
+
 module.exports = {
   findAll,
   findById,
@@ -150,5 +170,7 @@ module.exports = {
   upsertGroup,
   upsertCoa,
   findGroupsWithCounts,
+  countReferences,
+  deleteCoa,
 };
 

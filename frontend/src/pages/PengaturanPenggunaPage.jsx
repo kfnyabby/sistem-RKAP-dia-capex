@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
 import Banner from '../components/common/Banner';
+import PengaturanSubNav from '../components/pengaturan/PengaturanSubNav';
 import userApi from '../api/user.api';
 import { masterApi } from '../api/master.api';
 import { useAuth } from '../auth/AuthContext';
@@ -259,6 +260,8 @@ export default function PengaturanPenggunaPage() {
         title="Pengaturan · Pengguna dan Penugasan Unit"
         chips={<Chip variant="nt">Akuntansi</Chip>}
       />
+
+      <PengaturanSubNav />
 
       {/* Banner Feedback / Notifikasi */}
       {feedback && (

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import masterApi from '../../api/master.api';
 
-export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], companies = [], onSuccess }) {
+export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], companies = [], onSuccess, onDelete }) {
   const [formData, setFormData] = useState({
     source_key: '',
     code: '',
@@ -263,7 +263,21 @@ export default function UnitFormModal({ isOpen, onClose, unit, coaList = [], com
               <span>Unit Aktif (dapat mengajukan dan menyusun RKAP)</span>
             </label>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+              {unit?.id && onDelete && (
+                <button
+                  type="button"
+                  className="btn b3"
+                  style={{ marginRight: 'auto' }}
+                  onClick={() => {
+                    onClose();
+                    onDelete(unit);
+                  }}
+                  disabled={loading}
+                >
+                  Hapus Unit
+                </button>
+              )}
               <button type="submit" className="btn" disabled={loading}>
                 {loading ? 'Menyimpan...' : (unit?.id ? 'Simpan Perubahan' : 'Tambahkan Unit')}
               </button>
@@ -285,4 +299,5 @@ UnitFormModal.propTypes = {
   coaList: PropTypes.array,
   companies: PropTypes.array,
   onSuccess: PropTypes.func,
+  onDelete: PropTypes.func,
 };

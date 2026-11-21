@@ -316,6 +316,25 @@ const upsertBySourceKey = async (data, client = db) => {
   }
 };
 
+const countReferences = async (id, client = db) => {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*)::int FROM budget_docs WHERE unit_id = $1) AS budget_docs,
+      (SELECT COUNT(*)::int FROM journal_lines WHERE unit_id = $1) AS journal_lines,
+      (SELECT COUNT(*)::int FROM user_unit_access WHERE unit_id = $1) AS user_units,
+      (SELECT COUNT(*)::int FROM new_item_requests WHERE unit_id = $1) AS new_item_requests
+  `;
+  const res = await client.query(sql, [id]);
+  const row = res.rows[0] || { budget_docs: 0, journal_lines: 0, user_units: 0, new_item_requests: 0 };
+  const total = row.budget_docs + row.journal_lines + row.user_units + row.new_item_requests;
+  return { ...row, total };
+};
+
+const deleteUnit = async (id, client = db) => {
+  const res = await client.query('DELETE FROM units WHERE id = $1 RETURNING *', [id]);
+  return res.rows[0] || null;
+};
+
 module.exports = {
   findAll,
   findById,
@@ -324,4 +343,6 @@ module.exports = {
   create,
   update,
   upsertBySourceKey,
+  countReferences,
+  deleteUnit,
 };

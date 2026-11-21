@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import masterApi from '../../api/master.api';
 
-export default function CoaFormModal({ isOpen, onClose, coa, groupList = [], onSuccess }) {
+export default function CoaFormModal({ isOpen, onClose, coa, groupList = [], onSuccess, onDelete }) {
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -163,7 +163,21 @@ export default function CoaFormModal({ isOpen, onClose, coa, groupList = [], onS
               </select>
             </label>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+              {coa?.id && onDelete && (
+                <button
+                  type="button"
+                  className="btn b3"
+                  style={{ marginRight: 'auto' }}
+                  onClick={() => {
+                    onClose();
+                    onDelete(coa);
+                  }}
+                  disabled={loading}
+                >
+                  Hapus COA
+                </button>
+              )}
               <button type="submit" className="btn" disabled={loading}>
                 {loading ? 'Menyimpan...' : (coa?.id ? 'Simpan Perubahan' : 'Tambahkan COA')}
               </button>
@@ -184,4 +198,5 @@ CoaFormModal.propTypes = {
   coa: PropTypes.object,
   groupList: PropTypes.array,
   onSuccess: PropTypes.func,
+  onDelete: PropTypes.func,
 };

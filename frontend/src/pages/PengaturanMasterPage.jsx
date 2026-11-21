@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
+import PengaturanSubNav from '../components/pengaturan/PengaturanSubNav';
+import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal';
 import masterApi from '../api/master.api';
 import MasterImportDialog from '../components/master/MasterImportDialog';
 import ItemPriceHistoryModal from '../components/master/ItemPriceHistoryModal';
@@ -40,6 +42,96 @@ export default function PengaturanMasterPage() {
   const [invModal, setInvModal] = useState({ open: false, category: null });
   const [coaModal, setCoaModal] = useState({ open: false, coa: null });
   const [unitModal, setUnitModal] = useState({ open: false, unit: null });
+
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    type: 'item', // 'item' | 'coa' | 'unit'
+    entity: null,
+    loading: false,
+    error: null,
+    canDeactivate: false,
+    deactivateLoading: false,
+  });
+
+  const handleOpenDelete = (type, entity) => {
+    setDeleteModal({
+      open: true,
+      type,
+      entity,
+      loading: false,
+      error: null,
+      canDeactivate: false,
+      deactivateLoading: false,
+    });
+  };
+
+  const handleCloseDelete = () => {
+    setDeleteModal({
+      open: false,
+      type: 'item',
+      entity: null,
+      loading: false,
+      error: null,
+      canDeactivate: false,
+      deactivateLoading: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { type, entity } = deleteModal;
+    if (!entity?.id) return;
+
+    try {
+      setDeleteModal((prev) => ({ ...prev, loading: true, error: null }));
+      if (type === 'item') {
+        await masterApi.deleteItem(entity.id);
+        queryClient.invalidateQueries({ queryKey: ['items'] });
+        queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
+      } else if (type === 'coa') {
+        await masterApi.deleteCoa(entity.id);
+        queryClient.invalidateQueries({ queryKey: ['coas'] });
+        queryClient.invalidateQueries({ queryKey: ['coaGroups'] });
+        queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
+      } else if (type === 'unit') {
+        await masterApi.deleteUnit(entity.id);
+        queryClient.invalidateQueries({ queryKey: ['units'] });
+      }
+      handleCloseDelete();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Gagal menghapus data.';
+      const canDeact = err.response?.status === 409 || err.response?.data?.can_deactivate;
+      setDeleteModal((prev) => ({
+        ...prev,
+        loading: false,
+        error: msg,
+        canDeactivate: canDeact,
+      }));
+    }
+  };
+
+  const handleDeactivateInstead = async () => {
+    const { type, entity } = deleteModal;
+    if (!entity?.id) return;
+
+    try {
+      setDeleteModal((prev) => ({ ...prev, deactivateLoading: true }));
+      if (type === 'item') {
+        await masterApi.updateItemStatus(entity.id, false);
+        queryClient.invalidateQueries({ queryKey: ['items'] });
+      } else if (type === 'coa') {
+        await masterApi.updateCoa(entity.id, { ...entity, is_active: false });
+        queryClient.invalidateQueries({ queryKey: ['coas'] });
+      } else if (type === 'unit') {
+        await masterApi.updateUnit(entity.id, { ...entity, is_active: false });
+        queryClient.invalidateQueries({ queryKey: ['units'] });
+      }
+      handleCloseDelete();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Gagal menonaktifkan data.';
+      setDeleteModal((prev) => ({ ...prev, deactivateLoading: false, error: msg }));
+    }
+  };
 
   // Debounce input pencarian barang
   useEffect(() => {
@@ -163,6 +255,8 @@ export default function PengaturanMasterPage() {
         title="Pengaturan · Master Data"
         chips={<Chip variant="nt">Akuntansi</Chip>}
       />
+
+      <PengaturanSubNav />
 
       {/* Baris Tab Navigasi Mockup */}
       <div className="row" style={{ marginBottom: '8px' }}>
@@ -436,9 +530,18 @@ export default function PengaturanMasterPage() {
                             type="button"
                             className="btn b2"
                             onClick={() => setItemModal({ open: true, item })}
-                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
                           >
                             Ubah
+                          </button>
+                          <button
+                            type="button"
+                            className="btn b3"
+                            onClick={() => handleOpenDelete('item', item)}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                            title="Hapus Barang"
+                          >
+                            Hapus
                           </button>
                         </td>
                       </tr>
@@ -595,14 +698,23 @@ export default function PengaturanMasterPage() {
                           {coa.is_active ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <button
                           type="button"
                           className="btn b2"
                           onClick={() => setCoaModal({ open: true, coa })}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
                         >
                           Ubah
+                        </button>
+                        <button
+                          type="button"
+                          className="btn b3"
+                          onClick={() => handleOpenDelete('coa', coa)}
+                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                          title="Hapus COA"
+                        >
+                          Hapus
                         </button>
                       </td>
                     </tr>
@@ -836,14 +948,23 @@ export default function PengaturanMasterPage() {
                           {u.is_active ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <button
                           type="button"
                           className="btn b2"
                           onClick={() => setUnitModal({ open: true, unit: u })}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
                         >
                           Ubah
+                        </button>
+                        <button
+                          type="button"
+                          className="btn b3"
+                          onClick={() => handleOpenDelete('unit', u)}
+                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                          title="Hapus Unit"
+                        >
+                          Hapus
                         </button>
                       </td>
                     </tr>
@@ -948,6 +1069,7 @@ export default function PengaturanMasterPage() {
         coaList={coaList}
         groupList={references?.item_groups || []}
         onClose={() => setItemModal({ open: false, item: null })}
+        onDelete={(item) => handleOpenDelete('item', item)}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['items'] });
           queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
@@ -971,6 +1093,7 @@ export default function PengaturanMasterPage() {
         coa={coaModal.coa}
         groupList={coaGroups}
         onClose={() => setCoaModal({ open: false, coa: null })}
+        onDelete={(coa) => handleOpenDelete('coa', coa)}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['coas'] });
           queryClient.invalidateQueries({ queryKey: ['qualityReport'] });
@@ -984,9 +1107,29 @@ export default function PengaturanMasterPage() {
         coaList={coaList}
         companies={references?.companies || []}
         onClose={() => setUnitModal({ open: false, unit: null })}
+        onDelete={(unit) => handleOpenDelete('unit', unit)}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['units'] });
         }}
+      />
+
+      {/* Modal Konfirmasi Hapus Master Data */}
+      <ConfirmDeleteModal
+        isOpen={deleteModal.open}
+        onClose={handleCloseDelete}
+        onConfirm={handleConfirmDelete}
+        title={`Konfirmasi Hapus ${
+          deleteModal.type === 'item' ? 'Barang' : deleteModal.type === 'coa' ? 'COA' : 'Unit'
+        }`}
+        entityType={
+          deleteModal.type === 'item' ? 'Barang' : deleteModal.type === 'coa' ? 'COA' : 'Unit'
+        }
+        entityName={deleteModal.entity?.name || ''}
+        entityCode={deleteModal.entity?.code || ''}
+        loading={deleteModal.loading}
+        error={deleteModal.error}
+        onDeactivate={deleteModal.canDeactivate ? handleDeactivateInstead : null}
+        deactivateLoading={deleteModal.deactivateLoading}
       />
     </>
   );
