@@ -61,3 +61,5 @@ export const budgetApi = {
   },
 };
 
+export default budgetApi;
+

@@ -22,7 +22,7 @@ Dokumen ini mencatat seluruh berkas di direktori `frontend/src` yang dibuat sebe
 | 12 | `components/proses/DocReviewModal.jsx` | Dialog modal telaah rincian anggaran biaya dan investasi sebelum disetujui/dikembalikan | `07-telaah-dokumen.html` | **Ya** — Logika penolakan/pengembalian revisi dengan catatan (BR-14), persetujuan bertingkat (BR-07, BR-12), dan audit trail review. | Tidak | **Dipertahankan** |
 | 13 | `components/proses/PenentuanCoaSection.jsx` | Antrian Akuntansi untuk menetapkan COA barang baru yang diajukan unit | `07-telaah-dokumen.html` (Tab Penentuan COA) | **Ya (Kritis)** — Memuat aturan bisnis BR-17 dan BR-18 (`POST /api/new-item-requests/:id/assign-coa`), penetapan kode produk, pemilihan COA beban, dan pembuatan otomatis master barang di katalog. | Tidak | **Dipertahankan** |
 | 14 | `pages/LaporanPage.jsx` | Shell halaman laporan keuangan lama (Laporan Rekapitulasi & Laporan Matriks 12 Bulan) | `09-laporan-rekap.html` & `10-laporan-matriks.html` | **Ya** — Pengelompokan agregasi COA operasional dan pemecahan matriks anggaran bulanan (Jan–Des). | Tidak | **Dipertahankan** |
-| 15 | `components/pengaturan/PeriodSubmissionSection.jsx` | Komponen pengaturan jadwal pengisian anggaran, batas waktu telaah, dan kunci unit | `14-pengaturan-periode.html` (`PengaturanPeriodePage.jsx`) | **Ya** — Panggilan API status penutupan otomatis (*fill deadline*, *review deadline*) dan override pembukaan akses unit kerja (BR-06, BR-13). | Tidak | **Dipertahankan** |
+| 15 | `components/pengaturan/PeriodSubmissionSection.jsx` | Komponen pengaturan jadwal pengisian anggaran, batas waktu telaah, dan kunci unit | `06-periode-pengajuan.html` (`PengaturanPeriodePage.jsx`) | **Tidak** — Seluruh logika API dan validasi telah dipindahkan ke `PengaturanPeriodePage.jsx` dengan TanStack Query. | Tidak | **Dihapus** |
 
 ---
 
@@ -53,5 +53,5 @@ Komponen ini mengimplementasikan aturan bisnis krusial Fase 3b:
 ---
 
 ## 3. Rekomendasi Pembersihan
-1. **Hapus Segera**: Berkas no. 1, 2, 3, dan 4 (`MasterDataPage.jsx`, `MasterDataView.jsx`, `ImportModal.jsx`, `PengaturanPage.jsx`) karena sudah sepenuhnya terintegrasi pada layar pengganti (`PengaturanMasterPage.jsx`, `MasterImportDialog.jsx`, dan `PengaturanPenggunaPage.jsx`).
-2. **Pertahankan Penuh**: Berkas no. 5 s.d. 15 tetap dipertahankan sampai masing-masing layar mockup penggantinya dikerjakan satu per satu sesuai instruksi bertahap pemilik proyek.
+1. **Sudah Dihapus**: Berkas no. 1, 2, 3, 4 (`MasterDataPage.jsx`, `MasterDataView.jsx`, `ImportModal.jsx`, `PengaturanPage.jsx`), dan no. 15 (`PeriodSubmissionSection.jsx`) karena sudah sepenuhnya terintegrasi pada layar pengganti (`PengaturanMasterPage.jsx`, `PengaturanPenggunaPage.jsx`, dan `PengaturanPeriodePage.jsx`).
+2. **Pertahankan Penuh**: Berkas no. 5 s.d. 14 tetap dipertahankan sampai masing-masing layar mockup penggantinya dikerjakan satu per satu sesuai instruksi bertahap pemilik proyek.

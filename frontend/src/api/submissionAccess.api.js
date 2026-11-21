@@ -37,3 +37,5 @@ export const submissionAccessApi = {
     return res.data;
   },
 };
+
+export default submissionAccessApi;
