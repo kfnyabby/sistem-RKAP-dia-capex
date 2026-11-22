@@ -6,6 +6,12 @@ const getAuditLogs = async (req, res, next) => {
     res.json({
       success: true,
       data: result.rows,
+      meta: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total_count,
+        total_pages: result.total_pages,
+      },
       pagination: {
         page: result.page,
         limit: result.limit,

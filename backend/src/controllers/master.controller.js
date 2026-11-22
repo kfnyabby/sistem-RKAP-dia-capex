@@ -126,7 +126,10 @@ const updateCoa = async (req, res, next) => {
 const getCoaGroups = async (req, res, next) => {
   try {
     const groups = await masterDataService.listCoaGroups();
-    res.json({ data: groups });
+    res.json({
+      data: groups,
+      meta: { total: groups.length },
+    });
   } catch (err) {
     next(err);
   }
@@ -136,7 +139,10 @@ const getCoaGroups = async (req, res, next) => {
 const getInvestmentCategories = async (req, res, next) => {
   try {
     const categories = await masterDataService.listInvestmentCategories();
-    res.json({ data: categories });
+    res.json({
+      data: categories,
+      meta: { total: categories.length },
+    });
   } catch (err) {
     next(err);
   }
@@ -159,7 +165,10 @@ const updateInvestmentCategory = async (req, res, next) => {
 const getUnits = async (req, res, next) => {
   try {
     const units = await masterDataService.listUnits(req.query);
-    res.json({ data: units });
+    res.json({
+      data: units,
+      meta: { total: units.length },
+    });
   } catch (err) {
     next(err);
   }

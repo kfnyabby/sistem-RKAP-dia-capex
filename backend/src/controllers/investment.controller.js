@@ -110,6 +110,7 @@ const getPriorities = async (req, res, next) => {
     res.json({
       success: true,
       data: result.rows,
+      meta: { total: result.rows.length },
     });
   } catch (err) {
     next(err);
