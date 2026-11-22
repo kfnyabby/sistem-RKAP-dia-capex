@@ -65,3 +65,6 @@ export const workflowApi = {
     return res.data;
   },
 };
+
+export default workflowApi;
+
