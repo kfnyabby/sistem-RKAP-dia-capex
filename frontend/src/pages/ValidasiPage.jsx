@@ -33,6 +33,9 @@ export default function ValidasiPage() {
   const queryClient = useQueryClient();
 
   const isAkuntansi = user?.role === 'akuntansi';
+  const isManager = user?.role === 'manager';
+  const isPic = user?.role === 'pic';
+  const canModify = isAkuntansi || isManager;
 
   // Filters
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
@@ -249,8 +252,10 @@ export default function ValidasiPage() {
 
   // Header chip user context
   const userChipText = isAkuntansi
-    ? 'Akuntansi'
-    : `Manager · ${user?.unit_name || user?.name || 'Unit'}`;
+    ? 'Akuntansi (Semua Unit)'
+    : isManager
+    ? `Manager · ${user?.unit_name || user?.name || 'Unit'}`
+    : `PIC · ${user?.unit_name || user?.name || 'Unit'} (Baca Saja)`;
 
   return (
     <>
@@ -478,9 +483,9 @@ export default function ValidasiPage() {
                             onClick={() => setReviewModalDoc(doc)}
                             style={{ minHeight: '34px', padding: '0 12px', fontSize: 12 }}
                           >
-                            Tinjau
+                            {isPic ? 'Lihat Detail' : 'Tinjau'}
                           </button>
-                          {isSelf && (
+                          {!isPic && isSelf && (
                             <span className="lb" style={{ fontSize: 11, color: '#5E6070', whiteSpace: 'nowrap' }}>
                               Tidak dapat disetujui sendiri
                             </span>
@@ -515,82 +520,101 @@ export default function ValidasiPage() {
                 🔍 Buka Rincian Lengkap & Komentar
               </button>
 
-              <label htmlFor="cat" style={{ marginBottom: 12 }}>
-                Catatan (wajib bila dikembalikan / alasan buka kembali)
-                <textarea
-                  id="cat"
-                  rows={4}
-                  value={actionNote}
-                  onChange={(e) => setActionNote(e.target.value)}
-                  placeholder="Tulis catatan alasan perbaikan atau pembukaan kembali..."
-                />
-              </label>
-
-              {isSelfSubmitted && (
-                <div style={{ color: '#8A1F1B', fontSize: 12, fontWeight: 500, marginBottom: 10 }}>
-                  ⚠️ Pengaju tidak dapat menyetujui dokumen yang diajukannya sendiri (BR-07).
+              {!canModify ? (
+                <div
+                  style={{
+                    color: '#5E6070',
+                    fontSize: 13,
+                    background: '#FAF7F2',
+                    padding: '12px',
+                    borderRadius: 6,
+                    border: '1px solid #E6E0D6',
+                    marginTop: 8,
+                    lineHeight: '1.5',
+                  }}
+                >
+                  ℹ️ <b>Mode Baca-Saja:</b> Sebagai PIC Unit, Anda dapat memantau status antrian dan membuka rincian dokumen untuk memeriksa catatan pemeriksa. Anda tidak memiliki hak akses untuk mengubah atau menyetujui dokumen.
                 </div>
-              )}
+              ) : (
+                <>
+                  <label htmlFor="cat" style={{ marginBottom: 12 }}>
+                    Catatan (wajib bila dikembalikan / alasan buka kembali)
+                    <textarea
+                      id="cat"
+                      rows={4}
+                      value={actionNote}
+                      onChange={(e) => setActionNote(e.target.value)}
+                      placeholder="Tulis catatan alasan perbaikan atau pembukaan kembali..."
+                    />
+                  </label>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {/* Status DIAJUKAN */}
-                {activeDoc.status === 'DIAJUKAN' && (
-                  <>
-                    {!isSelfSubmitted && (
+                  {isSelfSubmitted && (
+                    <div style={{ color: '#8A1F1B', fontSize: 12, fontWeight: 500, marginBottom: 10 }}>
+                      ⚠️ Pengaju tidak dapat menyetujui dokumen yang diajukannya sendiri (BR-07).
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {/* Status DIAJUKAN */}
+                    {activeDoc.status === 'DIAJUKAN' && (
+                      <>
+                        {!isSelfSubmitted && (
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={handleApprove}
+                            disabled={approveMutation.isPending}
+                          >
+                            {approveMutation.isPending ? 'Menyetujui...' : 'Setujui'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn b3"
+                          onClick={handleReturn}
+                          disabled={returnMutation.isPending}
+                        >
+                          {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan'}
+                        </button>
+                      </>
+                    )}
+
+                    {/* Status DISETUJUI (Khusus Akuntansi) */}
+                    {activeDoc.status === 'DISETUJUI' && isAkuntansi && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={handleFinalize}
+                          disabled={finalizeMutation.isPending}
+                        >
+                          {finalizeMutation.isPending ? 'Memfinalisasi...' : 'Finalisasi'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn b3"
+                          onClick={handleReturn}
+                          disabled={returnMutation.isPending}
+                        >
+                          {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan'}
+                        </button>
+                      </>
+                    )}
+
+                    {/* Status FINAL (Khusus Akuntansi) */}
+                    {activeDoc.status === 'FINAL' && isAkuntansi && (
                       <button
                         type="button"
-                        className="btn"
-                        onClick={handleApprove}
-                        disabled={approveMutation.isPending}
+                        className="btn b2"
+                        onClick={handleReopen}
+                        disabled={reopenMutation.isPending}
                       >
-                        {approveMutation.isPending ? 'Menyetujui...' : 'Setujui'}
+                        {reopenMutation.isPending ? 'Membuka...' : 'Buka Kembali'}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="btn b3"
-                      onClick={handleReturn}
-                      disabled={returnMutation.isPending}
-                    >
-                      {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan'}
-                    </button>
-                  </>
-                )}
-
-                {/* Status DISETUJUI (Khusus Akuntansi) */}
-                {activeDoc.status === 'DISETUJUI' && isAkuntansi && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={handleFinalize}
-                      disabled={finalizeMutation.isPending}
-                    >
-                      {finalizeMutation.isPending ? 'Memfinalisasi...' : 'Finalisasi'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn b3"
-                      onClick={handleReturn}
-                      disabled={returnMutation.isPending}
-                    >
-                      {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan'}
-                    </button>
-                  </>
-                )}
-
-                {/* Status FINAL (Khusus Akuntansi) */}
-                {activeDoc.status === 'FINAL' && isAkuntansi && (
-                  <button
-                    type="button"
-                    className="btn b2"
-                    onClick={handleReopen}
-                    disabled={reopenMutation.isPending}
-                  >
-                    {reopenMutation.isPending ? 'Membuka...' : 'Buka Kembali'}
-                  </button>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <div style={{ color: '#5E6070', fontSize: 13, textAlign: 'center', padding: '24px 8px' }}>

@@ -7,10 +7,10 @@ const router = express.Router();
 
 router.use(requireAuth);
 
-// 1. Antrean Validasi (Manager & Akuntansi)
+// 1. Antrean Validasi (PIC baca-saja unit terkait, Manager & Akuntansi)
 router.get(
   '/budget-docs/review-queue',
-  requireRole(['manager', 'akuntansi']),
+  requireRole(['pic', 'manager', 'akuntansi']),
   workflowController.getReviewQueue
 );
 

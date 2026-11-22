@@ -45,6 +45,7 @@ export default function DocDetailModal({ doc, onClose, onRefreshQueue }) {
   const isSelfSubmitted = doc?.submitted_by === user?.id;
   const isAkuntansi = user?.role === 'akuntansi';
   const isManager = user?.role === 'manager';
+  const canModify = isAkuntansi || isManager;
 
   // 1. Query Baris Dokumen
   const linesQuery = useQuery({
@@ -726,24 +727,26 @@ export default function DocDetailModal({ doc, onClose, onRefreshQueue }) {
                 )}
               </div>
 
-              {/* Form Tambah Komentar */}
-              <form onSubmit={handleSendComment} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <textarea
-                  rows={2}
-                  placeholder="Tulis catatan / masukan perbaikan untuk baris ini..."
-                  value={newCommentText}
-                  onChange={(e) => setNewCommentText(e.target.value)}
-                  style={{ width: '100%', fontSize: 12, padding: 8 }}
-                />
-                <button
-                  type="submit"
-                  className="btn"
-                  disabled={!newCommentText.trim() || addCommentMutation.isPending}
-                  style={{ minHeight: '34px', fontSize: 12, alignSelf: 'flex-end' }}
-                >
-                  {addCommentMutation.isPending ? 'Mengirim...' : 'Kirim Komentar'}
-                </button>
-              </form>
+              {/* Form Tambah Komentar (Khusus Validator Manager/Akuntansi) */}
+              {canModify && (
+                <form onSubmit={handleSendComment} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <textarea
+                    rows={2}
+                    placeholder="Tulis catatan / masukan perbaikan untuk baris ini..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    style={{ width: '100%', fontSize: 12, padding: 8 }}
+                  />
+                  <button
+                    type="submit"
+                    className="btn"
+                    disabled={!newCommentText.trim() || addCommentMutation.isPending}
+                    style={{ minHeight: '34px', fontSize: 12, alignSelf: 'flex-end' }}
+                  >
+                    {addCommentMutation.isPending ? 'Mengirim...' : 'Kirim Komentar'}
+                  </button>
+                </form>
+              )}
             </div>
           )}
         </div>
@@ -759,87 +762,106 @@ export default function DocDetailModal({ doc, onClose, onRefreshQueue }) {
             gap: 10,
           }}
         >
-          {isSelfSubmitted && (
-            <div style={{ color: '#8A1F1B', fontSize: 12, fontWeight: 600 }}>
-              ⚠️ Perhatian: Anda adalah pengaju dokumen ini. Sesuai prinsip Maker-Checker (BR-07), Anda tidak dapat menyetujui dokumen yang Anda ajukan sendiri.
+          {!canModify ? (
+            <div
+              style={{
+                color: '#5E6070',
+                fontSize: 13,
+                background: '#FAF7F2',
+                padding: '10px 14px',
+                borderRadius: 6,
+                border: '1px solid #E6E0D6',
+                width: '100%',
+                lineHeight: '1.5',
+              }}
+            >
+              ℹ️ <b>Mode Baca-Saja:</b> Peran PIC hanya dapat memantau rincian dokumen dan riwayat telaah anggaran. Anda tidak memiliki hak akses untuk menyetujui, mengembalikan, atau memfinalisasi dokumen ini.
             </div>
-          )}
+          ) : (
+            <>
+              {isSelfSubmitted && (
+                <div style={{ color: '#8A1F1B', fontSize: 12, fontWeight: 600 }}>
+                  ⚠️ Perhatian: Anda adalah pengaju dokumen ini. Sesuai prinsip Maker-Checker (BR-07), Anda tidak dapat menyetujui dokumen yang Anda ajukan sendiri.
+                </div>
+              )}
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <label htmlFor="modal-cat" style={{ fontSize: 12, color: '#5E6070', display: 'block', marginBottom: 4 }}>
-                Catatan (Wajib jika dikembalikan / Alasan jika buka kembali dokumen FINAL):
-              </label>
-              <textarea
-                id="modal-cat"
-                rows={2}
-                value={actionNote}
-                onChange={(e) => setActionNote(e.target.value)}
-                placeholder="Tuliskan catatan arahan revisi atau alasan pembukaan kembali..."
-                style={{ width: '100%', fontSize: 13, padding: 8 }}
-              />
-            </div>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <label htmlFor="modal-cat" style={{ fontSize: 12, color: '#5E6070', display: 'block', marginBottom: 4 }}>
+                    Catatan (Wajib jika dikembalikan / Alasan jika buka kembali dokumen FINAL):
+                  </label>
+                  <textarea
+                    id="modal-cat"
+                    rows={2}
+                    value={actionNote}
+                    onChange={(e) => setActionNote(e.target.value)}
+                    placeholder="Tuliskan catatan arahan revisi atau alasan pembukaan kembali..."
+                    style={{ width: '100%', fontSize: 13, padding: 8 }}
+                  />
+                </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {/* DIAJUKAN actions */}
-              {doc.status === 'DIAJUKAN' && (
-                <>
-                  {!isSelfSubmitted && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {/* DIAJUKAN actions */}
+                  {doc.status === 'DIAJUKAN' && (
+                    <>
+                      {!isSelfSubmitted && (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={handleApprove}
+                          disabled={approveMutation.isPending}
+                        >
+                          {approveMutation.isPending ? 'Menyetujui...' : 'Setujui Dokumen'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="btn b3"
+                        onClick={handleReturn}
+                        disabled={returnMutation.isPending}
+                      >
+                        {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan'}
+                      </button>
+                    </>
+                  )}
+
+                  {/* DISETUJUI actions (Khusus Akuntansi) */}
+                  {doc.status === 'DISETUJUI' && isAkuntansi && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={handleFinalize}
+                        disabled={finalizeMutation.isPending}
+                      >
+                        {finalizeMutation.isPending ? 'Memfinalisasi...' : 'Finalisasi Dokumen (FINAL)'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn b3"
+                        onClick={handleReturn}
+                        disabled={returnMutation.isPending}
+                      >
+                        {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan ke PIC'}
+                      </button>
+                    </>
+                  )}
+
+                  {/* FINAL actions (Khusus Akuntansi) */}
+                  {doc.status === 'FINAL' && isAkuntansi && (
                     <button
                       type="button"
-                      className="btn"
-                      onClick={handleApprove}
-                      disabled={approveMutation.isPending}
+                      className="btn b2"
+                      onClick={handleReopen}
+                      disabled={reopenMutation.isPending}
                     >
-                      {approveMutation.isPending ? 'Menyetujui...' : 'Setujui Dokumen'}
+                      {reopenMutation.isPending ? 'Membuka...' : 'Buka Kembali Dokumen FINAL'}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="btn b3"
-                    onClick={handleReturn}
-                    disabled={returnMutation.isPending}
-                  >
-                    {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan'}
-                  </button>
-                </>
-              )}
-
-              {/* DISETUJUI actions (Khusus Akuntansi) */}
-              {doc.status === 'DISETUJUI' && isAkuntansi && (
-                <>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={handleFinalize}
-                    disabled={finalizeMutation.isPending}
-                  >
-                    {finalizeMutation.isPending ? 'Memfinalisasi...' : 'Finalisasi Dokumen (FINAL)'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn b3"
-                    onClick={handleReturn}
-                    disabled={returnMutation.isPending}
-                  >
-                    {returnMutation.isPending ? 'Mengembalikan...' : 'Kembalikan ke PIC'}
-                  </button>
-                </>
-              )}
-
-              {/* FINAL actions (Khusus Akuntansi) */}
-              {doc.status === 'FINAL' && isAkuntansi && (
-                <button
-                  type="button"
-                  className="btn b2"
-                  onClick={handleReopen}
-                  disabled={reopenMutation.isPending}
-                >
-                  {reopenMutation.isPending ? 'Membuka...' : 'Buka Kembali Dokumen FINAL'}
-                </button>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

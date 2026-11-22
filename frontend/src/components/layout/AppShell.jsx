@@ -96,15 +96,13 @@ export default function AppShell() {
                 marginTop: '2px',
               }}
             >
-              {(isAkuntansi || role === 'manager') && (
-                <NavLink
-                  to="/proses/validasi"
-                  className={({ isActive }) => (isActive ? 'on' : '')}
-                  style={{ fontSize: '13px', padding: '6px 10px' }}
-                >
-                  · Antrian Validasi
-                </NavLink>
-              )}
+              <NavLink
+                to="/proses/validasi"
+                className={({ isActive }) => (isActive ? 'on' : '')}
+                style={{ fontSize: '13px', padding: '6px 10px' }}
+              >
+                · Antrian Validasi
+              </NavLink>
               {isAkuntansi && (
                 <>
                   <NavLink

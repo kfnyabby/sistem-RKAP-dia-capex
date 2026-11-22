@@ -45,13 +45,13 @@ export default function App() {
             <Route path="entry/investasi" element={<EntryInvestasiPage />} />
             <Route path="entry/laptop-pc" element={<LaptopPcPage />} />
 
-            {/* Proses (Sesuai PRD 3.2: Validasi hanya Manager & Akuntansi; Realisasi hanya Akuntansi) */}
+            {/* Proses: Validasi dapat diakses PIC (baca-saja), Manager & Akuntansi; Realisasi & Pen-COA hanya Akuntansi */}
             <Route
               path="proses"
               element={
                 <ProtectedRoute
-                  allowedRoles={['manager', 'akuntansi']}
-                  deniedMessage="Akses ditolak: Menu Proses hanya dapat diakses oleh Manager dan Akuntansi."
+                  allowedRoles={['pic', 'manager', 'akuntansi']}
+                  deniedMessage="Akses ditolak: Menu Proses hanya dapat diakses oleh pengguna yang memiliki hak akses."
                 >
                   <Navigate to="/proses/validasi" replace />
                 </ProtectedRoute>
@@ -61,8 +61,8 @@ export default function App() {
               path="proses/validasi"
               element={
                 <ProtectedRoute
-                  allowedRoles={['manager', 'akuntansi']}
-                  deniedMessage="Akses ditolak: Antrian Validasi hanya dapat diakses oleh Manager dan Akuntansi."
+                  allowedRoles={['pic', 'manager', 'akuntansi']}
+                  deniedMessage="Akses ditolak: Antrian Validasi hanya dapat diakses oleh pengguna terotorisasi."
                 >
                   <ValidasiPage />
                 </ProtectedRoute>
