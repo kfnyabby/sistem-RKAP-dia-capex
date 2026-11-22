@@ -26,10 +26,11 @@ Komponen usang `LaporanPage.jsx` telah dihapus dan tombol Export Excel berfungsi
 - **Build**: Vite production build sukses tanpa kendala (`npm run build` selesai dalam 1.25s).
 - **Verifikasi Visual**: Port Chrome remote debugging (`9222`) tidak aktif di host browser. Verifikasi visual dilakukan melalui penyesuaian struktural DOM 1:1 terhadap mockup `17-rekap-gabungan.html` dan `14-laporan-matriks.html`, kelas CSS `.rk`, `.mx`, sticky kolom `.s1` & `.s2`, header ganda `.cat`, subtotal `.g`, `.st`, `.gr`, serta pengujian tampilan pada viewport 1280px.
 
-### 4. Penyimpangan dari Mockup / PRD
+### 4. Penyimpangan dari Mockup / PRD & Perbaikan Bug
 - **Tombol Export PDF**: Mockup menampilkan tombol Export PDF di samping Excel. Sesuai instruksi dan backend PRD Fase 7 yang mengembalikan 422 `PDF_EXPORT_DEFERRED`, tombol PDF disembunyikan.
 - **Data Contoh & Chip Statis**: Seluruh teks hardcoded dan chip "Data contoh" dihapus; diganti dengan penanganan status loading, error berbahasa Indonesia, dan empty state.
 - **Pembersihan Berkas Lama**: `LaporanPage.jsx` yang merupakan stub/placeholder lama telah dihapus untuk menjaga kebersihan codebase.
+- **Perbaikan Respons Wrapper `{ data: [...] }`**: Diperbaiki ekstraksi array untuk `masterApi.getUnits()` dan `masterApi.getCoaGroups()` yang mengembalikan objek wrapper `{ data: [...] }` sehingga mencegah `TypeError: units.map is not a function`. Company ID pada filter matriks juga diambil dinamis dari reference data.
 
 ### 5. Hal yang Diasumsikan / Ditulis Langsung di Kode
 - Toggle "Sembunyikan COA tanpa anggaran" pada layar Matriks menyaring kolom COA yang total nilainya 0 di semua unit untuk mempermudah analisis data lebar.

@@ -24,6 +24,22 @@ body {
   gap: 4px;
   flex: none;
   box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  align-self: flex-start;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(213, 217, 238, 0.2) transparent;
+}
+
+.sb::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sb::-webkit-scrollbar-thumb {
+  background: rgba(213, 217, 238, 0.2);
+  border-radius: 4px;
 }
 
 .sb b {
@@ -63,6 +79,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .sb-user {

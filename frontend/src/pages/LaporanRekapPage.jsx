@@ -25,11 +25,15 @@ export default function LaporanRekapPage() {
     queryKey: ['periods'],
     queryFn: async () => {
       const data = await budgetApi.getPeriods();
-      return data || [];
+      return Array.isArray(data) ? data : (data?.data || []);
     },
   });
 
-  const periods = periodsQuery.data || [];
+  const periods = useMemo(() => {
+    const raw = periodsQuery.data;
+    return Array.isArray(raw) ? raw : (raw?.data || []);
+  }, [periodsQuery.data]);
+
   const activeYear = selectedYear || (periods.length > 0 ? String(periods[0].year) : '2027');
 
   // 2. Load Units untuk filter dropdown
@@ -38,12 +42,15 @@ export default function LaporanRekapPage() {
     queryFn: async () => {
       const params = {};
       if (companyFilter !== 'ALL') params.company_code = companyFilter;
-      const data = await masterApi.getUnits(params);
-      return data || [];
+      const res = await masterApi.getUnits(params);
+      return Array.isArray(res) ? res : (res?.data || []);
     },
   });
 
-  const units = unitsQuery.data || [];
+  const units = useMemo(() => {
+    const raw = unitsQuery.data;
+    return Array.isArray(raw) ? raw : (raw?.data || []);
+  }, [unitsQuery.data]);
 
   // 3. Load Consolidated Report Data
   const consolidatedQuery = useQuery({
@@ -276,7 +283,7 @@ function CompanyRows({ comp }) {
       </tr>
 
       {/* Daftar Unit di Perusahaan Ini */}
-      {comp.units.map((unit) => (
+      {(comp.units || []).map((unit) => (
         <UnitRows key={unit.unit_id || unit.code} unit={unit} />
       ))}
 
@@ -316,7 +323,7 @@ function UnitRows({ unit }) {
       </tr>
 
       {/* Baris-Baris Anggaran Unit */}
-      {unit.lines.map((line, idx) => (
+      {(unit.lines || []).map((line, idx) => (
         <tr key={`${unit.unit_id}_${line.kind}_${line.coa_code}_${idx}`}>
           <td style={{ paddingLeft: 24 }}>
             {line.kind === 'INVESTASI' ? `Investasi: ${line.name}` : line.name}

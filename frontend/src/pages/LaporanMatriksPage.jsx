@@ -25,35 +25,54 @@ export default function LaporanMatriksPage() {
     queryKey: ['periods'],
     queryFn: async () => {
       const data = await budgetApi.getPeriods();
-      return data || [];
+      return Array.isArray(data) ? data : (data?.data || []);
     },
   });
 
-  const periods = periodsQuery.data || [];
+  const periods = useMemo(() => {
+    const raw = periodsQuery.data;
+    return Array.isArray(raw) ? raw : (raw?.data || []);
+  }, [periodsQuery.data]);
+
   const activeYear = selectedYear || (periods.length > 0 ? String(periods[0].year) : '2027');
 
-  // 2. Load Kelompok COA (coa_groups)
+  // 2. Load Reference Data (untuk ID Companies dinamis)
+  const refQuery = useQuery({
+    queryKey: ['reference-data'],
+    queryFn: async () => {
+      const data = await masterApi.getReferenceData();
+      return data || {};
+    },
+  });
+  const refCompanies = useMemo(() => refQuery.data?.companies || [], [refQuery.data]);
+
+  // 3. Load Kelompok COA (coa_groups)
   const coaGroupsQuery = useQuery({
     queryKey: ['coa-groups'],
     queryFn: async () => {
-      const data = await masterApi.getCoaGroups();
-      return data || [];
+      const res = await masterApi.getCoaGroups();
+      return Array.isArray(res) ? res : (res?.data || []);
     },
   });
 
-  const coaGroups = coaGroupsQuery.data || [];
+  const coaGroups = useMemo(() => {
+    const raw = coaGroupsQuery.data;
+    return Array.isArray(raw) ? raw : (raw?.data || []);
+  }, [coaGroupsQuery.data]);
 
-  // 3. Load Matrix Report Data
+  // 4. Load Matrix Report Data
   const matrixQuery = useQuery({
-    queryKey: ['report-matrix', activeYear, companyFilter, selectedGroupId, hideEmpty],
+    queryKey: ['report-matrix', activeYear, companyFilter, selectedGroupId, hideEmpty, refCompanies],
     queryFn: async () => {
       if (!activeYear) return null;
       const params = {
         period_year: activeYear,
         hide_empty: hideEmpty,
       };
-      if (companyFilter === 'CN') params.company_ids = '1';
-      if (companyFilter === 'CNH') params.company_ids = '2';
+      if (companyFilter !== 'ALL') {
+        const found = refCompanies.find((c) => c.code === companyFilter);
+        if (found) params.company_ids = String(found.id);
+      }
       if (selectedGroupId) params.group_ids = selectedGroupId;
 
       const data = await reportApi.getMatrix(params);
@@ -82,8 +101,10 @@ export default function LaporanMatriksPage() {
         period_year: activeYear,
         hide_empty: hideEmpty,
       };
-      if (companyFilter === 'CN') params.company_ids = '1';
-      if (companyFilter === 'CNH') params.company_ids = '2';
+      if (companyFilter !== 'ALL') {
+        const found = refCompanies.find((c) => c.code === companyFilter);
+        if (found) params.company_ids = String(found.id);
+      }
       if (selectedGroupId) params.group_ids = selectedGroupId;
 
       const res = await reportApi.exportExcel('matrix', params);
@@ -330,7 +351,7 @@ function GroupSubHeaders({ grp }) {
 function GroupCodeHeaders({ grp }) {
   return (
     <>
-      {grp.coas.map((coa) => (
+      {(grp.coas || []).map((coa) => (
         <th key={coa.code} className="cd">
           {coa.code}
         </th>
@@ -343,7 +364,7 @@ function CompanyMatrixRows({ comp, columns }) {
   return (
     <>
       {/* Setiap Instalasi di Perusahaan */}
-      {comp.instalasi.map((inst, iIdx) => (
+      {(comp.instalasi || []).map((inst, iIdx) => (
         <InstalasiMatrixRows key={`${comp.code}_inst_${iIdx}`} comp={comp} inst={inst} columns={columns} />
       ))}
 
@@ -374,7 +395,7 @@ function InstalasiMatrixRows({ comp, inst, columns }) {
   return (
     <>
       {/* Unit-Unit di Bawah Instalasi */}
-      {inst.units.map((unit) => (
+      {(inst.units || []).map((unit) => (
         <tr key={unit.unit_id || unit.code}>
           <td className="s1">
             <Chip variant="nt">{comp.code}</Chip>
