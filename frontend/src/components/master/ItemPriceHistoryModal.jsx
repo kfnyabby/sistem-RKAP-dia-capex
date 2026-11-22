@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import RupiahInput from '../common/RupiahInput';
 import masterApi from '../../api/master.api';
 
 export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess }) {
@@ -129,10 +130,8 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
           <div className="row" style={{ alignItems: 'flex-end', marginBottom: '12px' }}>
             <label style={{ flex: 1, minWidth: '140px' }}>
               Harga Satuan PT CN (Rp)
-              <input
-                type="number"
-                min="0"
-                step="1"
+              <RupiahInput
+                id="price_cn"
                 required
                 value={priceCn}
                 onChange={(e) => setPriceCn(e.target.value)}
@@ -142,10 +141,8 @@ export default function ItemPriceHistoryModal({ isOpen, onClose, item, onSuccess
 
             <label style={{ flex: 1, minWidth: '140px' }}>
               Harga Satuan PT CNH (Rp)
-              <input
-                type="number"
-                min="0"
-                step="1"
+              <RupiahInput
+                id="price_cnh"
                 required
                 value={priceCnh}
                 onChange={(e) => setPriceCnh(e.target.value)}

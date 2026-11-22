@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import RupiahInput from '../common/RupiahInput';
 import masterApi from '../../api/master.api';
 
 export default function ItemFormModal({ isOpen, onClose, item, coaList = [], groupList = [], onSuccess, onDelete }) {
@@ -234,10 +235,8 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], gro
               <div className="row">
                 <label style={{ flex: 1, minWidth: '140px' }}>
                   HPP Awal PT CN (Rp)
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
+                  <RupiahInput
+                    id="price_cn"
                     value={formData.price_cn}
                     onChange={(e) => setFormData({ ...formData, price_cn: e.target.value })}
                   />
@@ -245,10 +244,8 @@ export default function ItemFormModal({ isOpen, onClose, item, coaList = [], gro
 
                 <label style={{ flex: 1, minWidth: '140px' }}>
                   HPP Awal PT CNH (Rp)
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
+                  <RupiahInput
+                    id="price_cnh"
                     value={formData.price_cnh}
                     onChange={(e) => setFormData({ ...formData, price_cnh: e.target.value })}
                   />

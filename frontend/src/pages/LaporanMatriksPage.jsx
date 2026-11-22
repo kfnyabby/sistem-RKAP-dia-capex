@@ -351,7 +351,7 @@ function GroupSubHeaders({ grp }) {
 function GroupCodeHeaders({ grp }) {
   return (
     <>
-      {(grp.coas || []).map((coa) => (
+      {(Array.isArray(grp?.coas) ? grp.coas : []).map((coa) => (
         <th key={coa.code} className="cd">
           {coa.code}
         </th>
@@ -364,7 +364,7 @@ function CompanyMatrixRows({ comp, columns }) {
   return (
     <>
       {/* Setiap Instalasi di Perusahaan */}
-      {(comp.instalasi || []).map((inst, iIdx) => (
+      {(Array.isArray(comp?.instalasi) ? comp.instalasi : []).map((inst, iIdx) => (
         <InstalasiMatrixRows key={`${comp.code}_inst_${iIdx}`} comp={comp} inst={inst} columns={columns} />
       ))}
 
@@ -395,7 +395,7 @@ function InstalasiMatrixRows({ comp, inst, columns }) {
   return (
     <>
       {/* Unit-Unit di Bawah Instalasi */}
-      {(inst.units || []).map((unit) => (
+      {(Array.isArray(inst?.units) ? inst.units : []).map((unit) => (
         <tr key={unit.unit_id || unit.code}>
           <td className="s1">
             <Chip variant="nt">{comp.code}</Chip>

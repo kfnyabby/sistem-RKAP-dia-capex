@@ -11,6 +11,7 @@ import { workflowApi } from '../api/workflow.api';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
 import Banner from '../components/common/Banner';
+import RupiahInput from '../components/common/RupiahInput';
 
 function formatRupiah(value) {
   if (value === null || value === undefined || isNaN(value)) return '0';
@@ -925,14 +926,11 @@ export default function EntryInvestasiPage() {
               {/* Harga Satuan */}
               <label htmlFor="hs">
                 Harga satuan (Rp)
-                <input
+                <RupiahInput
                   id="hs"
-                  type="number"
-                  min="0"
-                  step="any"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="Contoh: 185000000"
+                  placeholder="Contoh: 185.000.000"
                   required
                 />
               </label>

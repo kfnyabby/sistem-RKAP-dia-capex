@@ -37,6 +37,7 @@ const MONTHS = [
 export default function EntryBiayaPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const canAccessLaptopPc = user?.role === 'akuntansi' || user?.role === 'manager';
 
   // State Filter & Konteks
   const [selectedUnitId, setSelectedUnitId] = useState('');
@@ -484,8 +485,8 @@ export default function EntryBiayaPage() {
         </Banner>
       )}
 
-      {/* 4. Sub Navigasi: Anggaran Biaya vs Anggaran Investasi */}
-      <div className="row" style={{ marginTop: '4px' }}>
+      {/* 4. Sub Navigasi: Anggaran Biaya vs Anggaran Investasi vs Laptop & PC */}
+      <div className="row" style={{ marginTop: '4px', gap: '8px' }}>
         <Link
           to="/entry/biaya"
           className="chip ok"
@@ -500,6 +501,15 @@ export default function EntryBiayaPage() {
         >
           Anggaran Investasi
         </Link>
+        {canAccessLaptopPc && (
+          <Link
+            to="/entry/laptop-pc"
+            className="chip nt"
+            style={{ padding: '10px 16px', textDecoration: 'none' }}
+          >
+            Investasi: Laptop &amp; PC
+          </Link>
+        )}
       </div>
 
       {/* 5. Filter Berurutan Sesuai Mockup */}

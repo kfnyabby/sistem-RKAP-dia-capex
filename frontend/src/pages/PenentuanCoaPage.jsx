@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
 import Banner from '../components/common/Banner';
+import RupiahInput from '../components/common/RupiahInput';
 import { newItemRequestApi } from '../api/newItemRequest.api';
 import masterApi from '../api/master.api';
 
@@ -458,10 +459,8 @@ export default function PenentuanCoaPage() {
 
                   <label htmlFor="hs">
                     Harga satuan {selectedReq.company_code || companyCode} (Rp) <span style={{ color: '#8A1F1B' }}>*</span>
-                    <input
+                    <RupiahInput
                       id="hs"
-                      type="number"
-                      min="0"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
                       required

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { newItemRequestApi } from '../../api/newItemRequest.api';
+import RupiahInput from '../common/RupiahInput';
 
 function formatRupiah(value) {
   if (value === null || value === undefined || isNaN(value)) return '0';
@@ -261,10 +262,8 @@ export default function NewItemRequestPicCard({
             </label>
             <label htmlFor="nh">
               Estimasi harga satuan (Rp)
-              <input
+              <RupiahInput
                 id="nh"
-                type="number"
-                min="0"
                 placeholder="0"
                 value={formData.est_price}
                 onChange={handleInputChange}

@@ -213,6 +213,31 @@ export default function LaptopPcPage() {
         }
       />
 
+      {/* Sub Navigasi Tab */}
+      <div className="row" style={{ marginTop: '4px', gap: '8px', marginBottom: '12px' }}>
+        <Link
+          to="/entry/biaya"
+          className="chip nt"
+          style={{ padding: '10px 16px', textDecoration: 'none' }}
+        >
+          Anggaran Biaya
+        </Link>
+        <Link
+          to="/entry/investasi"
+          className="chip nt"
+          style={{ padding: '10px 16px', textDecoration: 'none' }}
+        >
+          Anggaran Investasi
+        </Link>
+        <Link
+          to="/entry/laptop-pc"
+          className="chip ok"
+          style={{ padding: '10px 16px', textDecoration: 'none', fontWeight: 600 }}
+        >
+          Investasi: Laptop &amp; PC
+        </Link>
+      </div>
+
       {/* 2. Kartu Penjelasan Sesuai Mockup 15-laptop-pc */}
       <div
         className="card"

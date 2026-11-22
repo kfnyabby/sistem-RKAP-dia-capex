@@ -8,6 +8,7 @@ export default function AppShell() {
   const role = (user?.role || 'pic').toLowerCase();
 
   const isAkuntansi = role === 'akuntansi';
+  const canAccessLaptopPc = role === 'akuntansi' || role === 'manager';
 
   const formatRole = (r) => {
     switch (r) {
@@ -34,21 +35,14 @@ export default function AppShell() {
           Dashboard
         </NavLink>
 
-        <NavLink
-          to="/entry/biaya"
-          className={() => (location.pathname.startsWith('/entry') ? 'on' : '')}
-        >
-          Entry
-        </NavLink>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <NavLink
-            to="/proses/validasi"
-            className={() => (location.pathname.startsWith('/proses') ? 'on' : '')}
+            to="/entry/biaya"
+            className={() => (location.pathname.startsWith('/entry') ? 'on' : '')}
           >
-            Proses
+            Entry
           </NavLink>
-          {location.pathname.startsWith('/proses') && isAkuntansi && (
+          {location.pathname.startsWith('/entry') && (
             <div
               style={{
                 display: 'flex',
@@ -59,26 +53,76 @@ export default function AppShell() {
               }}
             >
               <NavLink
-                to="/proses/validasi"
+                to="/entry/biaya"
                 className={({ isActive }) => (isActive ? 'on' : '')}
                 style={{ fontSize: '13px', padding: '6px 10px' }}
               >
-                · Antrian Validasi
+                · Anggaran Biaya
               </NavLink>
               <NavLink
-                to="/proses/realisasi"
+                to="/entry/investasi"
                 className={({ isActive }) => (isActive ? 'on' : '')}
                 style={{ fontSize: '13px', padding: '6px 10px' }}
               >
-                · Input Realisasi
+                · Anggaran Investasi
               </NavLink>
-              <NavLink
-                to="/proses/penentuan-coa"
-                className={({ isActive }) => (isActive ? 'on' : '')}
-                style={{ fontSize: '13px', padding: '6px 10px' }}
-              >
-                · Penentuan COA
-              </NavLink>
+              {canAccessLaptopPc && (
+                <NavLink
+                  to="/entry/laptop-pc"
+                  className={({ isActive }) => (isActive ? 'on' : '')}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                >
+                  · Laptop &amp; PC
+                </NavLink>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <NavLink
+            to="/proses/validasi"
+            className={() => (location.pathname.startsWith('/proses') ? 'on' : '')}
+          >
+            Proses
+          </NavLink>
+          {location.pathname.startsWith('/proses') && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                paddingLeft: '12px',
+                marginTop: '2px',
+              }}
+            >
+              {(isAkuntansi || role === 'manager') && (
+                <NavLink
+                  to="/proses/validasi"
+                  className={({ isActive }) => (isActive ? 'on' : '')}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                >
+                  · Antrian Validasi
+                </NavLink>
+              )}
+              {isAkuntansi && (
+                <>
+                  <NavLink
+                    to="/proses/realisasi"
+                    className={({ isActive }) => (isActive ? 'on' : '')}
+                    style={{ fontSize: '13px', padding: '6px 10px' }}
+                  >
+                    · Input Realisasi
+                  </NavLink>
+                  <NavLink
+                    to="/proses/penentuan-coa"
+                    className={({ isActive }) => (isActive ? 'on' : '')}
+                    style={{ fontSize: '13px', padding: '6px 10px' }}
+                  >
+                    · Penentuan COA
+                  </NavLink>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -90,12 +134,40 @@ export default function AppShell() {
           Display
         </NavLink>
 
-        <NavLink
-          to="/laporan/rekap"
-          className={() => (location.pathname.startsWith('/laporan') ? 'on' : '')}
-        >
-          Laporan
-        </NavLink>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <NavLink
+            to="/laporan/rekap"
+            className={() => (location.pathname.startsWith('/laporan') ? 'on' : '')}
+          >
+            Laporan
+          </NavLink>
+          {location.pathname.startsWith('/laporan') && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                paddingLeft: '12px',
+                marginTop: '2px',
+              }}
+            >
+              <NavLink
+                to="/laporan/rekap"
+                className={({ isActive }) => (isActive ? 'on' : '')}
+                style={{ fontSize: '13px', padding: '6px 10px' }}
+              >
+                · Rekap per Unit
+              </NavLink>
+              <NavLink
+                to="/laporan/matriks"
+                className={({ isActive }) => (isActive ? 'on' : '')}
+                style={{ fontSize: '13px', padding: '6px 10px' }}
+              >
+                · Matriks Unit × COA
+              </NavLink>
+            </div>
+          )}
+        </div>
 
         {isAkuntansi && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
