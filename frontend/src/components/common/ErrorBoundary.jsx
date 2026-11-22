@@ -19,36 +19,37 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#FAF7F2] p-8 flex items-center justify-center font-sans">
-          <div className="max-w-xl w-full bg-white border border-[#F8D9D6] rounded-xl shadow-lg p-6 space-y-4">
-            <div className="flex items-center gap-3 text-[#8A1F1B]">
-              <AlertCircle className="w-6 h-6 shrink-0" />
-              <h2 className="text-lg font-bold">Terjadi Kesalahan Tampilan (UI Error)</h2>
+        <div style={{ minHeight: '100vh', background: '#FAF7F2', padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+          <div style={{ maxWidth: 640, width: '100%', background: '#fff', border: '1px solid #F8D9D6', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#8A1F1B' }}>
+              <AlertCircle size={24} style={{ flexShrink: 0 }} />
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Terjadi Kesalahan Tampilan (UI Error)</h2>
             </div>
 
-            <p className="text-xs text-[#5E6070]">
+            <p style={{ margin: 0, fontSize: 13, color: '#5E6070' }}>
               Aplikasi mendeteksi galat saat memuat komponen halaman ini:
             </p>
 
-            <div className="bg-[#FFF5F5] border border-[#F8D9D6] rounded-lg p-3 text-xs font-mono text-[#8A1F1B] overflow-x-auto whitespace-pre-wrap">
+            <div style={{ background: '#FFF5F5', border: '1px solid #F8D9D6', borderRadius: 8, padding: 12, fontSize: 12, fontFamily: 'monospace', color: '#8A1F1B', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
               <b>{this.state.error?.toString()}</b>
               {this.state.error?.stack && (
-                <div className="mt-2 text-[11px] text-slate-500">
+                <div style={{ marginTop: 8, fontSize: 11, color: '#5E6070' }}>
                   {this.state.error.stack}
                 </div>
               )}
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8 }}>
               <button
                 type="button"
                 onClick={() => {
                   this.setState({ hasError: false, error: null });
                   window.location.reload();
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#3D4E9C] text-white rounded-md text-xs font-semibold hover:bg-[#313f80] transition-colors cursor-pointer"
+                className="btn"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 38, fontSize: 12, padding: '0 16px' }}
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw size={14} />
                 Muat Ulang Halaman
               </button>
             </div>

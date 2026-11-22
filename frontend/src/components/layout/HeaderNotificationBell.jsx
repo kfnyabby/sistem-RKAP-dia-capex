@@ -90,33 +90,92 @@ export default function HeaderNotificationBell() {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div style={{ position: 'relative' }} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) fetchNotifications();
         }}
-        className="relative p-2 rounded-lg text-[#5E6070] hover:text-[#1F2233] hover:bg-[#FAF7F2] border border-transparent hover:border-[#E6E0D6] transition cursor-pointer select-none"
+        style={{
+          position: 'relative',
+          padding: 8,
+          borderRadius: 8,
+          color: '#5E6070',
+          background: 'transparent',
+          border: '1px solid transparent',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
         title="Pusat Notifikasi"
         aria-label="Notifikasi"
       >
-        <Bell className="w-4 h-4" />
+        <Bell size={18} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#8A1F1B] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-xs">
+          <span
+            style={{
+              position: 'absolute',
+              top: -2,
+              right: -2,
+              minWidth: 18,
+              height: 18,
+              background: '#8A1F1B',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 700,
+              borderRadius: 99,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+            }}
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-[#E6E0D6] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            marginTop: 8,
+            width: 340,
+            background: '#fff',
+            borderRadius: 12,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            border: '1px solid #E6E0D6',
+            zIndex: 50,
+            overflow: 'hidden',
+          }}
+        >
           {/* Header Popover */}
-          <div className="px-4 py-3 bg-[#FAF7F2] border-b border-[#E6E0D6] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#1F2233]">Notifikasi</span>
+          <div
+            style={{
+              padding: '12px 16px',
+              background: '#FAF7F2',
+              borderBottom: '1px solid #E6E0D6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1F2233' }}>Notifikasi</span>
               {unreadCount > 0 && (
-                <span className="px-1.5 py-0.5 bg-[#8A1F1B]/10 text-[#8A1F1B] rounded-full text-[10px] font-bold">
+                <span
+                  style={{
+                    padding: '2px 6px',
+                    background: 'rgba(138, 31, 27, 0.1)',
+                    color: '#8A1F1B',
+                    borderRadius: 99,
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
                   {unreadCount} baru
                 </span>
               )}
@@ -125,55 +184,111 @@ export default function HeaderNotificationBell() {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="flex items-center gap-1 text-[11px] font-semibold text-[#3D4E9C] hover:underline cursor-pointer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#3D4E9C',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
               >
-                <CheckCheck className="w-3.5 h-3.5" />
+                <CheckCheck size={14} />
                 Tandai semua dibaca
               </button>
             )}
           </div>
 
           {/* List Notifikasi */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-[#F0EBE2]">
+          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
             {loading && notifications.length === 0 ? (
-              <div className="p-6 text-center text-xs text-[#5E6070]">Memuat notifikasi...</div>
+              <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: '#5E6070' }}>
+                Memuat notifikasi...
+              </div>
             ) : notifications.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#5E6070] space-y-1">
-                <Bell className="w-6 h-6 mx-auto text-[#B9B4C9] mb-2" />
-                <p className="font-semibold text-[#1F2233]">Tidak ada notifikasi</p>
-                <p className="text-[11px]">Anda akan menerima pemberitahuan alur validasi dan deadline di sini.</p>
+              <div style={{ padding: 32, textAlign: 'center', fontSize: 12, color: '#5E6070' }}>
+                <Bell size={24} style={{ margin: '0 auto 8px', color: '#B9B4C9', display: 'block' }} />
+                <p style={{ margin: 0, fontWeight: 600, color: '#1F2233' }}>Tidak ada notifikasi</p>
+                <p style={{ margin: '4px 0 0', fontSize: 11 }}>
+                  Anda akan menerima pemberitahuan alur validasi dan deadline di sini.
+                </p>
               </div>
             ) : (
               notifications.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleMarkAsRead(item)}
-                  className={`p-3.5 hover:bg-[#FAF7F2] transition cursor-pointer flex items-start gap-3 text-left ${
-                    !item.is_read ? 'bg-[#ECE8F5]/30' : ''
-                  }`}
+                  style={{
+                    padding: 12,
+                    borderBottom: '1px solid #F0EBE2',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    textAlign: 'left',
+                    background: !item.is_read ? 'rgba(236, 232, 245, 0.35)' : '#fff',
+                  }}
                 >
-                  <div className="mt-1 shrink-0">
-                    {!item.is_read ? (
-                      <span className="w-2 h-2 rounded-full bg-[#3D4E9C] block" />
-                    ) : (
-                      <span className="w-2 h-2 rounded-full bg-transparent block" />
-                    )}
+                  <div style={{ marginTop: 4, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: !item.is_read ? '#3D4E9C' : 'transparent',
+                        display: 'block',
+                      }}
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs ${!item.is_read ? 'font-bold text-[#1F2233]' : 'font-medium text-[#1F2233]'}`}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        fontWeight: !item.is_read ? 700 : 500,
+                        color: '#1F2233',
+                      }}
+                    >
                       {item.title}
                     </p>
-                    <p className="text-[11px] text-[#5E6070] mt-0.5 line-clamp-2 leading-relaxed">
+                    <p
+                      style={{
+                        margin: '2px 0 0',
+                        fontSize: 11,
+                        color: '#5E6070',
+                        lineHeight: 1.4,
+                      }}
+                    >
                       {item.body}
                     </p>
-                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-[#5E6070]">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-[#B9B4C9]" />
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginTop: 6,
+                        fontSize: 10,
+                        color: '#5E6070',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Clock size={12} style={{ color: '#B9B4C9' }} />
                         {formatRelativeTime(item.created_at)}
                       </span>
                       {item.link && (
-                        <span className="text-[#3D4E9C] flex items-center gap-0.5">
-                          Buka <ExternalLink className="w-2.5 h-2.5" />
+                        <span
+                          style={{
+                            color: '#3D4E9C',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                          }}
+                        >
+                          Buka <ExternalLink size={10} />
                         </span>
                       )}
                     </div>

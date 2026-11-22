@@ -43,13 +43,17 @@ export default function LaporanRekapPage() {
       const params = {};
       if (companyFilter !== 'ALL') params.company_code = companyFilter;
       const res = await masterApi.getUnits(params);
-      return Array.isArray(res) ? res : (res?.data || []);
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.data)) return res.data;
+      return [];
     },
   });
 
   const units = useMemo(() => {
     const raw = unitsQuery.data;
-    return Array.isArray(raw) ? raw : (raw?.data || []);
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    return [];
   }, [unitsQuery.data]);
 
   // 3. Load Consolidated Report Data
@@ -195,7 +199,7 @@ export default function LaporanRekapPage() {
               onChange={(e) => setUnitFilter(e.target.value)}
             >
               <option value="">Semua unit</option>
-              {units.map((u) => (
+              {(Array.isArray(units) ? units : []).map((u) => (
                 <option key={u.id} value={String(u.id)}>
                   [{u.code}] {u.name}
                 </option>
@@ -283,7 +287,7 @@ function CompanyRows({ comp }) {
       </tr>
 
       {/* Daftar Unit di Perusahaan Ini */}
-      {(comp.units || []).map((unit) => (
+      {(Array.isArray(comp?.units) ? comp.units : []).map((unit) => (
         <UnitRows key={unit.unit_id || unit.code} unit={unit} />
       ))}
 
@@ -323,7 +327,7 @@ function UnitRows({ unit }) {
       </tr>
 
       {/* Baris-Baris Anggaran Unit */}
-      {(unit.lines || []).map((line, idx) => (
+      {(Array.isArray(unit?.lines) ? unit.lines : []).map((line, idx) => (
         <tr key={`${unit.unit_id}_${line.kind}_${line.coa_code}_${idx}`}>
           <td style={{ paddingLeft: 24 }}>
             {line.kind === 'INVESTASI' ? `Investasi: ${line.name}` : line.name}

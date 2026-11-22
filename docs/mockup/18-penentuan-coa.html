@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Penentuan COA</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1F2233;background:#FAF7F2;font-size:14px}
+.app{display:flex;min-height:760px}
+.sb{width:208px;background:#232B4A;padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex:none}
+.sb b{color:#fff;font-size:15px;padding:0 10px 16px}
+.sb a{padding:10px;border-radius:6px;color:#D5D9EE;text-decoration:none}
+.sb a.on{background:#3A4577;color:#fff}
+.mn{flex:1;min-width:0;padding:24px 28px;display:flex;flex-direction:column;gap:16px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:20px}h2{margin:0 0 10px;font-size:15px}
+.card{background:#fff;border:1px solid #E6E0D6;border-radius:8px;padding:16px}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500}
+.ok{background:#DDF1E4;color:#14532D}.wn{background:#FBE8C8;color:#7A3E00}.bd{background:#F8D9D6;color:#8A1F1B}.nt{background:#ECE8F5;color:#3A3F63}
+.sc{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:#5E6070;padding:8px;border-bottom:1px solid #E6E0D6;white-space:nowrap}
+td{padding:8px;border-bottom:1px solid #F0EBE2}.r{text-align:right}
+.btn{background:#3D4E9C;color:#fff;border:0;border-radius:6px;padding:0 16px;font:inherit;min-height:44px;cursor:pointer}
+.b2{background:#fff;color:#3D4E9C;border:1px solid #3D4E9C}.b3{background:#fff;color:#8A1F1B;border:1px solid #8A1F1B}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.lb{font-size:12px;color:#5E6070}.vl{font-size:22px;font-weight:600;margin-top:4px}
+input,select,textarea{font:inherit;border:1px solid #B9B4C9;border-radius:6px;padding:9px;min-height:44px;box-sizing:border-box;background:#fff}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#5E6070}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="sb" aria-label="Menu utama"><b>Sistem RKAP</b><a href="#">Dashboard</a><a href="#">Entry</a><a href="#" class="on">Proses</a><a href="#">Display</a><a href="#">Laporan</a><a href="#">Pengaturan</a></nav>
+<main class="mn">
+<div class="hd"><h1>Proses · Penentuan COA</h1><div style="display:flex;gap:8px"><span class="chip nt">Akuntansi · CN</span><span class="chip wn">Data contoh</span></div></div>
+<div class="row"><label for="fs">Status<select id="fs"><option>Menunggu COA</option><option>COA ditentukan</option><option>Semua</option></select></label><label for="fu">Unit<select id="fu"><option>Semua unit</option></select></label><label for="fc">Cari barang<input id="fc" placeholder="Nama barang"></label></div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+<div class="card sc" style="flex:2;min-width:560px"><table><tr><th>No.</th><th>Unit</th><th>Nama barang</th><th>Satuan</th><th class="r">Qty</th><th class="r">Estimasi harga</th><th class="r">Jumlah</th><th>Dikirim</th><th>Status</th></tr>
+<tr style="background:#ECE8F5"><td>1</td><td>[9220] MCU</td><td>Label printer thermal</td><td>Roll</td><td class="r">10</td><td class="r">35.000</td><td class="r">350.000</td><td>12 Nov</td><td><span class="chip wn">Menunggu COA</span></td></tr>
+<tr><td>2</td><td>[9712] Klinik Gigi PPS</td><td>Kertas thermal EKG</td><td>Roll</td><td class="r">20</td><td class="r">28.000</td><td class="r">560.000</td><td>12 Nov</td><td><span class="chip wn">Menunggu COA</span></td></tr>
+<tr><td>3</td><td>[9805] Depo Obat Bogorejo</td><td>Stempel nama dokter</td><td>Pcs</td><td class="r">4</td><td class="r">75.000</td><td class="r">300.000</td><td>10 Nov</td><td><span class="chip ok">5.8.2 ditentukan</span></td></tr></table></div>
+<div class="card" style="flex:1;min-width:320px"><h2>Label printer thermal</h2>
+<p style="margin:0 0 4px;color:#5E6070;font-size:13px">[9220] MCU · Anggaran Biaya RKAP 2027 · status dokumen <b>DRAFT</b></p>
+<p style="margin:0 0 4px;font-size:13px"><b>Spesifikasi:</b> Lebar 80 mm</p><p style="margin:0 0 12px;font-size:13px"><b>Alasan:</b> Kebutuhan layanan kasir</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<label for="jc">Jenis COA<select id="jc"><option>Biaya Administrasi</option><option>Biaya Pemeliharaan</option></select></label>
+<label for="cx">COA<select id="cx"><option>5.8.2 Biaya Pemakaian Alat Perkantoran</option><option>5.8.3 Biaya Cetak &amp; Fotocopy</option></select></label>
+<label for="kb">Kode barang<input id="kb" value="BRG-3205"></label>
+<label for="sb">Satuan<input id="sb" value="Roll"></label>
+<label for="hs">Harga satuan CN (Rp)<input id="hs" value="35000"></label>
+<label for="cn">Catatan penanganan (opsional)<textarea id="cn" rows="2"></textarea></label></div>
+<p style="margin:12px 0;font-size:13px;color:#5E6070">Setelah disimpan, barang masuk master dan baris ditambahkan ke dokumen yang masih DRAFT (BR-17). Bila dokumen sudah diajukan, baris tidak ditambahkan dan dicatat untuk ditangani saat revisi. Harga CNH tidak diisi di sini.</p>
+<button class="btn" style="width:100%">Tentukan COA dan tambahkan ke master</button></div></div>
+</main>
+</div>
+</body>
+</html>

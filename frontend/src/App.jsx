@@ -17,6 +17,7 @@ import PengaturanMasterPage from './pages/PengaturanMasterPage';
 import PengaturanPenggunaPage from './pages/PengaturanPenggunaPage';
 import PengaturanPeriodePage from './pages/PengaturanPeriodePage';
 import PengaturanAuditPage from './pages/PengaturanAuditPage';
+import PenentuanCoaPage from './pages/PenentuanCoaPage';
 
 export default function App() {
   return (
@@ -77,6 +78,21 @@ export default function App() {
                   <RealisasiPage />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="proses/penentuan-coa"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['akuntansi']}
+                  deniedMessage="Akses ditolak: Penentuan COA hanya dapat diakses oleh Akuntansi."
+                >
+                  <PenentuanCoaPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="proses/pen-coa"
+              element={<Navigate to="/proses/penentuan-coa" replace />}
             />
 
             {/* Display (Semua Role) */}

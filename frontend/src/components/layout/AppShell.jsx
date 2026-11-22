@@ -41,12 +41,47 @@ export default function AppShell() {
           Entry
         </NavLink>
 
-        <NavLink
-          to="/proses/validasi"
-          className={() => (location.pathname.startsWith('/proses') ? 'on' : '')}
-        >
-          Proses
-        </NavLink>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <NavLink
+            to="/proses/validasi"
+            className={() => (location.pathname.startsWith('/proses') ? 'on' : '')}
+          >
+            Proses
+          </NavLink>
+          {location.pathname.startsWith('/proses') && isAkuntansi && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                paddingLeft: '12px',
+                marginTop: '2px',
+              }}
+            >
+              <NavLink
+                to="/proses/validasi"
+                className={({ isActive }) => (isActive ? 'on' : '')}
+                style={{ fontSize: '13px', padding: '6px 10px' }}
+              >
+                · Antrian Validasi
+              </NavLink>
+              <NavLink
+                to="/proses/realisasi"
+                className={({ isActive }) => (isActive ? 'on' : '')}
+                style={{ fontSize: '13px', padding: '6px 10px' }}
+              >
+                · Input Realisasi
+              </NavLink>
+              <NavLink
+                to="/proses/penentuan-coa"
+                className={({ isActive }) => (isActive ? 'on' : '')}
+                style={{ fontSize: '13px', padding: '6px 10px' }}
+              >
+                · Penentuan COA
+              </NavLink>
+            </div>
+          )}
+        </div>
 
         <NavLink
           to="/display"

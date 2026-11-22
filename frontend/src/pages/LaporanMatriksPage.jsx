@@ -336,7 +336,7 @@ export default function LaporanMatriksPage() {
 function GroupSubHeaders({ grp }) {
   return (
     <>
-      {grp.coas.map((coa) => (
+      {(Array.isArray(grp?.coas) ? grp.coas : []).map((coa) => (
         <th key={coa.code} className="cn">
           {coa.name}
         </th>
@@ -451,7 +451,7 @@ function InstalasiMatrixRows({ comp, inst, columns }) {
 function GroupCells({ grp, values, groupTotalVal, cellClass, totClass = 'tot' }) {
   return (
     <>
-      {grp.coas.map((coa) => {
+      {(Array.isArray(grp?.coas) ? grp.coas : []).map((coa) => {
         const val = values[coa.code] || 0;
         const cls = cellClass || (val === 0 ? 'n z' : 'n');
         return (
@@ -469,7 +469,7 @@ function GroupGrandTotalCells({ grp, grandTotal }) {
   const groupTotalVal = grandTotal.group_totals?.[grp.group] || 0;
   return (
     <>
-      {grp.coas.map((coa) => {
+      {(Array.isArray(grp?.coas) ? grp.coas : []).map((coa) => {
         const val = grandTotal.values?.[coa.code] || 0;
         return (
           <td key={coa.code} className={val === 0 ? 'n z' : 'n'}>
