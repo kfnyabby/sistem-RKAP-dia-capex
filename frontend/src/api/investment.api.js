@@ -57,3 +57,5 @@ export const investmentApi = {
     return res.data;
   },
 };
+
+export default investmentApi;
