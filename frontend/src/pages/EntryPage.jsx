@@ -20,7 +20,7 @@ import { masterApi } from '../api/master.api';
 import { investmentApi } from '../api/investment.api';
 import { submissionAccessApi } from '../api/submissionAccess.api';
 import { workflowApi } from '../api/workflow.api';
-import NewItemRequestsSection from '../components/entry/NewItemRequestsSection';
+import NewItemRequestsSection from '../components/entry/NewItemRequestPicCard';
 import InvestmentForm from '../components/entry/InvestmentForm';
 import InvestmentTable from '../components/entry/InvestmentTable';
 import LaptopPcView from '../components/investment/LaptopPcView';
