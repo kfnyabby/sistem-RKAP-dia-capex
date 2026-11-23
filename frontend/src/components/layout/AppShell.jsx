@@ -126,7 +126,7 @@ export default function AppShell() {
         </div>
 
         <NavLink
-          to="/display"
+          to="/display/biaya"
           className={() => (location.pathname.startsWith('/display') ? 'on' : '')}
         >
           Display

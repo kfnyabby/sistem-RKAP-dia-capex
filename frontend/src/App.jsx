@@ -10,7 +10,9 @@ import EntryInvestasiPage from './pages/EntryInvestasiPage';
 import LaptopPcPage from './pages/LaptopPcPage';
 import ValidasiPage from './pages/ValidasiPage';
 import RealisasiPage from './pages/RealisasiPage';
-import DisplayPage from './pages/DisplayPage';
+import DisplayBiayaPage from './pages/DisplayBiayaPage';
+import DisplayInvestasiPage from './pages/DisplayInvestasiPage';
+import DisplayPermintaanPage from './pages/DisplayPermintaanPage';
 import LaporanRekapPage from './pages/LaporanRekapPage';
 import LaporanMatriksPage from './pages/LaporanMatriksPage';
 import PengaturanMasterPage from './pages/PengaturanMasterPage';
@@ -96,7 +98,10 @@ export default function App() {
             />
 
             {/* Display (Semua Role) */}
-            <Route path="display" element={<DisplayPage />} />
+            <Route path="display" element={<Navigate to="/display/biaya" replace />} />
+            <Route path="display/biaya" element={<DisplayBiayaPage />} />
+            <Route path="display/investasi" element={<DisplayInvestasiPage />} />
+            <Route path="display/permintaan" element={<DisplayPermintaanPage />} />
 
             {/* Laporan (Semua Role) */}
             <Route path="laporan" element={<Navigate to="/laporan/rekap" replace />} />

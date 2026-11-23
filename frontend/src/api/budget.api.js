@@ -59,6 +59,12 @@ export const budgetApi = {
     });
     return res.data;
   },
+
+  // --- BARIS BIAYA LINTAS DOKUMEN (DISPLAY) ---
+  listCrossUnitExpenseLines: async (params = {}) => {
+    const res = await api.get('/expense-lines', { params });
+    return res.data;
+  },
 };
 
 export default budgetApi;
