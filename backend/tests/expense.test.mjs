@@ -46,6 +46,12 @@ describe('Expense Budget Test Suite (Fase 3)', () => {
   };
 
   beforeAll(async () => {
+    // Pastikan periode 1 buka untuk pengujian
+    await db.query(
+      "UPDATE periods SET submission_state = 'BUKA', status = 'PENGISIAN', fill_deadline = CURRENT_DATE + INTERVAL '30 days' WHERE id = 1"
+    );
+    await db.query("DELETE FROM submission_access WHERE period_id = 1");
+
     // 1. Dapatkan COA yang ada di seed
     const coaRes = await db.query(
       'SELECT id, code FROM coas WHERE category = $1 ORDER BY id ASC LIMIT 2',

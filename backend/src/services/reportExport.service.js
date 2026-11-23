@@ -1,6 +1,8 @@
 const ExcelJS = require('exceljs');
 const reportService = require('./report.service');
 const dashboardService = require('./dashboard.service');
+const expenseLineRepository = require('../repositories/expenseLine.repository');
+const investmentLineRepository = require('../repositories/investmentLine.repository');
 
 /**
  * Service Ekspor Laporan Excel (.xlsx) (Fase 7)
@@ -510,6 +512,246 @@ async function exportBudgetVsRealization(query, user) {
 }
 
 /**
+ * 6. Export: Display Anggaran Biaya (Fase 3d)
+ */
+async function exportDisplayBiaya(query, user) {
+  const exportQuery = {
+    ...query,
+    page: 1,
+    per_page: 100000,
+  };
+  const result = await expenseLineRepository.findAllCrossUnit(exportQuery, user);
+  const data = result.data || [];
+  const totals = result.totals || { total_rkap: 0, total_realization: 0, total_units: 0, total_lines: 0 };
+
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('Display Anggaran Biaya');
+
+  ws.addRow(['DISPLAY ANGGARAN BIAYA RKAP']);
+  ws.addRow([`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`]);
+  ws.addRow([]);
+
+  const headerRow = ws.addRow([
+    'No.',
+    'Kode Unit',
+    'Nama Unit',
+    'Status Dokumen',
+    'Kode Barang',
+    'Nama Barang',
+    'Satuan',
+    'Harga Satuan (Rp)',
+    'Volume / Qty',
+    'Jumlah RKAP (Rp)',
+    'Realisasi (Rp)',
+    'Pemakaian (%)',
+    'Kode COA',
+    'Nama COA',
+    'Catatan',
+  ]);
+
+  headerRow.eachCell((cell) => {
+    cell.fill = HEADER_FILL;
+    cell.font = HEADER_FONT;
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  data.forEach((r, idx) => {
+    const row = ws.addRow([
+      idx + 1,
+      r.unit?.code || '—',
+      r.unit?.name || '—',
+      r.doc_status || '—',
+      r.item?.code || '—',
+      r.item?.name || '—',
+      r.uom || '—',
+      r.price != null ? Number(r.price) : 0,
+      r.qty != null ? Number(r.qty) : 0,
+      r.amount != null ? Number(r.amount) : 0,
+      r.realization != null ? Number(r.realization) : null,
+      r.realization_percentage != null ? `${r.realization_percentage}%` : '—',
+      r.coa?.code || '—',
+      r.coa?.name || '—',
+      r.note || '',
+    ]);
+
+    row.getCell(1).alignment = { horizontal: 'center' };
+    row.getCell(2).alignment = { horizontal: 'center' };
+    row.getCell(4).alignment = { horizontal: 'center' };
+    row.getCell(7).alignment = { horizontal: 'center' };
+    row.getCell(8).numFmt = '#,##0';
+    row.getCell(9).numFmt = '#,##0';
+    row.getCell(10).numFmt = '#,##0';
+    if (r.realization != null) {
+      row.getCell(11).numFmt = '#,##0';
+    } else {
+      row.getCell(11).alignment = { horizontal: 'center' };
+    }
+    row.getCell(12).alignment = { horizontal: 'right' };
+    row.getCell(13).alignment = { horizontal: 'center' };
+  });
+
+  const totalRow = ws.addRow([
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    'TOTAL',
+    '',
+    '',
+    Number(totals.total_rkap) || 0,
+    totals.total_realization != null && totals.total_realization > 0 ? Number(totals.total_realization) : 0,
+    totals.total_rkap > 0 && totals.total_realization > 0
+      ? `${Math.round((Number(totals.total_realization) / Number(totals.total_rkap)) * 100)}%`
+      : '—',
+    '',
+    '',
+    '',
+  ]);
+
+  totalRow.eachCell((cell) => {
+    cell.font = BOLD_FONT;
+    cell.fill = SUBTOTAL_FILL;
+  });
+  totalRow.getCell(7).alignment = { horizontal: 'center' };
+  totalRow.getCell(10).numFmt = '#,##0';
+  totalRow.getCell(11).numFmt = '#,##0';
+  totalRow.getCell(12).alignment = { horizontal: 'right' };
+
+  autoFitColumns(ws);
+
+  return {
+    buffer: await workbook.xlsx.writeBuffer(),
+    filename: `Display_Anggaran_Biaya_${Date.now()}.xlsx`,
+  };
+}
+
+/**
+ * 7. Export: Display Anggaran Investasi (Fase 3d)
+ */
+async function exportDisplayInvestasi(query, user) {
+  const exportQuery = {
+    ...query,
+    page: 1,
+    per_page: 100000,
+  };
+  const result = await investmentLineRepository.findAllCrossUnit(exportQuery, user);
+  const data = result.data || [];
+  const totals = result.totals || { total_amount: 0, total_depreciation: 0, total_units: 0, total_lines: 0 };
+
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('Display Anggaran Investasi');
+
+  ws.addRow(['DISPLAY ANGGARAN INVESTASI RKAP']);
+  ws.addRow([`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`]);
+  ws.addRow([]);
+
+  const headerRow = ws.addRow([
+    'No.',
+    'Kode Unit',
+    'Nama Unit',
+    'Status Dokumen',
+    'Nama Barang / Investasi',
+    'Kategori',
+    'Kode COA',
+    'Nama COA',
+    'Prioritas',
+    'Bulan Rencana',
+    'Volume / Qty',
+    'Harga Satuan (Rp)',
+    'Total Investasi (Rp)',
+    'Masa Manfaat (Bln)',
+    'Beban Penyusutan (Rp)',
+    'Sasaran Strategis',
+    'Indikator Kinerja',
+    'Program Kerja',
+    'Aksi Strategis',
+    'Catatan',
+  ]);
+
+  headerRow.eachCell((cell) => {
+    cell.fill = HEADER_FILL;
+    cell.font = HEADER_FONT;
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+  });
+
+  data.forEach((r, idx) => {
+    const row = ws.addRow([
+      idx + 1,
+      r.unit?.code || r.unit_code || '—',
+      r.unit?.name || r.unit_name || '—',
+      r.doc_status || '—',
+      r.name || '—',
+      r.category?.name || r.category_name || '—',
+      r.coa?.code || r.coa_code || '—',
+      r.coa?.name || r.coa_name || '—',
+      r.priority?.name || r.priority_name || '—',
+      r.plan_month != null ? `Bulan ${r.plan_month}` : '—',
+      r.qty != null ? Number(r.qty) : 0,
+      r.price != null ? Number(r.price) : 0,
+      r.amount != null ? Number(r.amount) : 0,
+      r.useful_life_months != null ? `${r.useful_life_months} Bulan` : '—',
+      r.depreciation_amount != null ? Number(r.depreciation_amount) : 0,
+      r.strategic_objective || '',
+      r.kpi || '',
+      r.work_program || '',
+      r.strategic_action || '',
+      r.note || '',
+    ]);
+
+    row.getCell(1).alignment = { horizontal: 'center' };
+    row.getCell(2).alignment = { horizontal: 'center' };
+    row.getCell(4).alignment = { horizontal: 'center' };
+    row.getCell(7).alignment = { horizontal: 'center' };
+    row.getCell(10).alignment = { horizontal: 'center' };
+    row.getCell(11).numFmt = '#,##0';
+    row.getCell(12).numFmt = '#,##0';
+    row.getCell(13).numFmt = '#,##0';
+    row.getCell(14).alignment = { horizontal: 'center' };
+    row.getCell(15).numFmt = '#,##0';
+  });
+
+  const totalRow = ws.addRow([
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    'TOTAL',
+    '',
+    '',
+    Number(totals.total_amount) || 0,
+    '',
+    Number(totals.total_depreciation) || 0,
+    '',
+    '',
+    '',
+    '',
+    '',
+  ]);
+
+  totalRow.eachCell((cell) => {
+    cell.font = BOLD_FONT;
+    cell.fill = SUBTOTAL_FILL;
+  });
+  totalRow.getCell(10).alignment = { horizontal: 'center' };
+  totalRow.getCell(13).numFmt = '#,##0';
+  totalRow.getCell(15).numFmt = '#,##0';
+
+  autoFitColumns(ws);
+
+  return {
+    buffer: await workbook.xlsx.writeBuffer(),
+    filename: `Display_Anggaran_Investasi_${Date.now()}.xlsx`,
+  };
+}
+
+/**
  * Main Dispatcher Export
  */
 async function generateReportExport(query, user) {
@@ -541,9 +783,13 @@ async function generateReportExport(query, user) {
       return await exportMatrix(query, user);
     case 'budget-vs-realization':
       return await exportBudgetVsRealization(query, user);
+    case 'display-biaya':
+      return await exportDisplayBiaya(query, user);
+    case 'display-investasi':
+      return await exportDisplayInvestasi(query, user);
     default: {
       const error = new Error(
-        `Jenis laporan '${query.report}' tidak valid. Pilihan: expense-by-coa, investment-summary, consolidated, matrix, budget-vs-realization.`
+        `Jenis laporan '${query.report}' tidak valid. Pilihan: expense-by-coa, investment-summary, consolidated, matrix, budget-vs-realization, display-biaya, display-investasi.`
       );
       error.status = 400;
       error.code = 'INVALID_REPORT_TYPE';

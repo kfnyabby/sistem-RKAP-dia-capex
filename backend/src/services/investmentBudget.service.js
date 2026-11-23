@@ -475,18 +475,11 @@ const getLastLineText = async (docId, user) => {
   return await investmentLineRepository.getLastLineByDocId(docId);
 };
 
-const listLaptopPcCrossUnit = async (filters = {}, user) => {
-  // Hanya Akuntansi dan Manager yang berwenang
-  if (user.role !== 'akuntansi' && user.role !== 'manager') {
-    const error = new Error(
-      'Forbidden: Hanya Akuntansi dan Manager yang berwenang melihat daftar Laptop & PC lintas unit'
-    );
-    error.statusCode = 403;
-    throw error;
-  }
-
+const listCrossUnitInvestment = async (filters = {}, user) => {
   return await investmentLineRepository.findAllCrossUnit(filters, user);
 };
+
+const listLaptopPcCrossUnit = listCrossUnitInvestment;
 
 module.exports = {
   listInvestmentLines,
@@ -496,4 +489,5 @@ module.exports = {
   getSuggestions,
   getLastLineText,
   listLaptopPcCrossUnit,
+  listCrossUnitInvestment,
 };

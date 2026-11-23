@@ -13,6 +13,7 @@ router.get('/budget-docs/:id', budgetDocController.getDocById);
 router.post('/budget-docs/:id/refresh-prices', budgetDocController.refreshDocPrices);
 
 // Baris Anggaran Biaya
+router.get('/expense-lines', budgetDocController.listCrossUnitExpenseLines);
 router.get('/budget-docs/:id/expense-lines', budgetDocController.getExpenseLines);
 router.put('/budget-docs/:id/expense-lines', budgetDocController.updateExpenseLines);
 router.delete('/expense-lines/:id', budgetDocController.deleteExpenseLine);

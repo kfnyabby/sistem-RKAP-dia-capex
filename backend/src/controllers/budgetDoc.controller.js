@@ -87,6 +87,18 @@ const refreshDocPrices = async (req, res, next) => {
   }
 };
 
+const listCrossUnitExpenseLines = async (req, res, next) => {
+  try {
+    const result = await expenseBudgetService.listCrossUnitExpense(req.query, req.user);
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getDocs,
   createDoc,
@@ -95,4 +107,5 @@ module.exports = {
   updateExpenseLines,
   deleteExpenseLine,
   refreshDocPrices,
+  listCrossUnitExpenseLines,
 };
