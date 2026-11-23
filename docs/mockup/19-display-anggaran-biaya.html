@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Display Anggaran Biaya</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1F2233;background:#FAF7F2;font-size:14px}
+.app{display:flex;min-height:760px}
+.sb{width:208px;background:#232B4A;padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex:none}
+.sb b{color:#fff;font-size:15px;padding:0 10px 16px}
+.sb a{padding:10px;border-radius:6px;color:#D5D9EE;text-decoration:none}
+.sb a.on{background:#3A4577;color:#fff}
+.mn{flex:1;min-width:0;padding:24px 28px;display:flex;flex-direction:column;gap:16px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:20px}h2{margin:0 0 10px;font-size:15px}
+.card{background:#fff;border:1px solid #E6E0D6;border-radius:8px;padding:16px}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500}
+.ok{background:#DDF1E4;color:#14532D}.wn{background:#FBE8C8;color:#7A3E00}.bd{background:#F8D9D6;color:#8A1F1B}.nt{background:#ECE8F5;color:#3A3F63}
+.sc{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:#5E6070;padding:8px;border-bottom:1px solid #E6E0D6;white-space:nowrap}
+td{padding:8px;border-bottom:1px solid #F0EBE2}.r{text-align:right}
+.btn{background:#3D4E9C;color:#fff;border:0;border-radius:6px;padding:0 16px;font:inherit;min-height:44px;cursor:pointer}
+.b2{background:#fff;color:#3D4E9C;border:1px solid #3D4E9C}.b3{background:#fff;color:#8A1F1B;border:1px solid #8A1F1B}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.lb{font-size:12px;color:#5E6070}.vl{font-size:22px;font-weight:600;margin-top:4px}
+input,select,textarea{font:inherit;border:1px solid #B9B4C9;border-radius:6px;padding:9px;min-height:44px;box-sizing:border-box;background:#fff}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#5E6070}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="sb" aria-label="Menu utama"><b>Sistem RKAP</b><a href="#">Dashboard</a><a href="#">Entry</a><a href="#">Proses</a><a href="#" class="on">Display</a><a href="#">Laporan</a><a href="#">Pengaturan</a></nav>
+<main class="mn">
+<div class="hd"><h1>Display · Anggaran Biaya</h1><div style="display:flex;gap:8px"><span class="chip nt">CN · RKAP 2027</span><span class="chip wn">Data contoh</span></div></div>
+<div class="row"><a href="#" class="chip ok" style="padding:10px 16px">Anggaran Biaya</a><a href="#" class="chip nt" style="padding:10px 16px">Anggaran Investasi</a><a href="#" class="chip nt" style="padding:10px 16px">Permintaan</a></div>
+<div class="card" style="background:#ECE8F5;border-color:#CFC8E6;color:#3A3F63">Tampilan baca-saja lintas unit dan dokumen sesuai hak akses Anda. Untuk mengubah isian, buka Entry.</div>
+<div class="row"><label for="fu">Unit<select id="fu"><option>Semua unit</option></select></label><label for="fs">Status dokumen<select id="fs"><option>Semua</option><option>Draft</option><option>Diajukan</option><option>Disetujui</option><option>Final</option></select></label><label for="fj">Jenis COA<select id="fj"><option>Semua jenis</option></select></label><label for="fc">COA<select id="fc"><option>Semua COA</option></select></label><label for="fb">Cari barang<input id="fb" placeholder="Nama atau kode"></label><button class="btn b2">Export Excel</button></div>
+<div class="g4"><div class="card"><div class="lb">Total RKAP (hasil filter)</div><div class="vl">Rp 19.358.000</div></div><div class="card"><div class="lb">Realisasi Jan s.d. Okt</div><div class="vl">Rp 16.765.000</div></div><div class="card"><div class="lb">Unit</div><div class="vl">3</div></div><div class="card"><div class="lb">Baris</div><div class="vl">5</div></div></div>
+<div class="card sc"><table><tr><th>No.</th><th>Unit</th><th>Barang</th><th>Satuan</th><th class="r">Harga</th><th class="r">Qty RKAP</th><th class="r">Jumlah</th><th class="r">Real (Jan s.d. Okt)</th><th>Pemakaian</th><th>COA</th><th>Status dokumen</th></tr><tr><td>1</td><td>[9220] MCU</td><td>Kertas HVS A4 70 gr</td><td>Rim</td><td class="r">48.000</td><td class="r">36</td><td class="r">1.728.000</td><td class="r">1.440.000</td><td><span class="chip wn">83%</span></td><td>5.8.3 Biaya Cetak &amp; Fotocopy</td><td><span class="chip ok">Disetujui</span></td></tr><tr><td>2</td><td>[9220] MCU</td><td>Tinta printer hitam</td><td>Botol</td><td class="r">85.000</td><td class="r">14</td><td class="r">1.190.000</td><td class="r">1.020.000</td><td><span class="chip wn">86%</span></td><td>5.8.3 Biaya Cetak &amp; Fotocopy</td><td><span class="chip ok">Disetujui</span></td></tr><tr><td>3</td><td>[9712] Klinik Gigi PPS</td><td>Sarung tangan latex M</td><td>Box</td><td class="r">62.000</td><td class="r">120</td><td class="r">7.440.000</td><td class="r">5.580.000</td><td><span class="chip ok">75%</span></td><td>5.2.4 Biaya Suku Cadang Medis</td><td><span class="chip wn">Diajukan</span></td></tr><tr><td>4</td><td>[9712] Klinik Gigi PPS</td><td>Masker bedah 3 ply</td><td>Box</td><td class="r">38.000</td><td class="r">200</td><td class="r">7.600.000</td><td class="r">7.220.000</td><td><span class="chip wn">95%</span></td><td>5.2.4 Biaya Suku Cadang Medis</td><td><span class="chip wn">Diajukan</span></td></tr><tr><td>5</td><td>[9805] Depo Obat Bogorejo</td><td>Plastik klip obat</td><td>Pak</td><td class="r">17.500</td><td class="r">80</td><td class="r">1.400.000</td><td class="r">1.505.000</td><td><span class="chip bd">108%</span></td><td>5.8.3 Biaya Cetak &amp; Fotocopy</td><td><span class="chip ok" style="background:#232B4A;color:#fff">Final</span></td></tr></table></div>
+<div class="hd"><span class="lb">Menampilkan 1 sampai 5 dari 5 baris</span><div style="display:flex;gap:8px"><button class="btn b2">Sebelumnya</button><button class="btn b2">Berikutnya</button></div></div>
+</main>
+</div>
+</body>
+</html>
