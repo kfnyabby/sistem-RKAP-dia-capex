@@ -456,6 +456,10 @@ const refreshDocPrices = async (docId, user) => {
   }
 };
 
+const listCrossUnitExpense = async (filters = {}, user) => {
+  return await expenseLineRepository.findAllCrossUnit(filters, user);
+};
+
 module.exports = {
   listDocs,
   getDocDetail,
@@ -465,5 +469,6 @@ module.exports = {
   deleteExpenseLine,
   getAvailableItemsForDoc,
   refreshDocPrices,
+  listCrossUnitExpense,
 };
 

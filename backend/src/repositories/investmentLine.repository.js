@@ -382,45 +382,118 @@ const getLastLineByDocId = async (docId, client = db) => {
   return res.rows[0] || null;
 };
 
+const parseUnitIds = (input) => {
+  if (!input) return [];
+  if (Array.isArray(input)) {
+    return input.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id) && id > 0);
+  }
+  if (typeof input === 'string') {
+    return input
+      .split(',')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((id) => !isNaN(id) && id > 0);
+  }
+  if (typeof input === 'number' && !isNaN(input) && input > 0) {
+    return [input];
+  }
+  return [];
+};
+
 const findAllCrossUnit = async (filters = {}, user, client = db) => {
   const accessibleUnitIds = await getAccessibleUnitIds(user);
   if (accessibleUnitIds !== null && accessibleUnitIds.length === 0) {
-    return { data: [], meta: { page: 1, per_page: 50, total: 0 } };
+    return {
+      data: [],
+      meta: { page: 1, per_page: 50, total: 0, total_pages: 0 },
+      totals: { total_amount: 0, total_depreciation: 0, total_units: 0, total_lines: 0 },
+    };
   }
 
-  const conditions = [];
+  const conditions = ["bd.type = 'INVESTASI'"];
   const params = [];
   let paramIdx = 1;
 
+  // 1. Scoping Akses Unit
   if (accessibleUnitIds !== null) {
     conditions.push(`bd.unit_id = ANY($${paramIdx}::int[])`);
     params.push(accessibleUnitIds);
     paramIdx++;
   }
 
-  // Filter kategori: default mencari PC atau LAPTOP jika tidak ditentukan
-  const categoryFilter = filters.category_name || 'PC/LAPTOP';
-  if (categoryFilter) {
+  // 2. Filter unit_id spesifik (bisa banyak)
+  const requestedUnitIds = parseUnitIds(filters.unit_id);
+  if (requestedUnitIds.length > 0) {
+    if (accessibleUnitIds !== null) {
+      const allowedUnitIds = requestedUnitIds.filter((id) => accessibleUnitIds.includes(id));
+      if (allowedUnitIds.length === 0) {
+        return {
+          data: [],
+          meta: { page: 1, per_page: 50, total: 0, total_pages: 0 },
+          totals: { total_amount: 0, total_depreciation: 0, total_units: 0, total_lines: 0 },
+        };
+      }
+      conditions.push(`bd.unit_id = ANY($${paramIdx}::int[])`);
+      params.push(allowedUnitIds);
+      paramIdx++;
+    } else {
+      conditions.push(`bd.unit_id = ANY($${paramIdx}::int[])`);
+      params.push(requestedUnitIds);
+      paramIdx++;
+    }
+  }
+
+  // 3. Filter kategori: spesifik category_id atau fallback Laptop/PC bila diminta
+  if (filters.category_id) {
+    conditions.push(`il.category_id = $${paramIdx}`);
+    params.push(parseInt(filters.category_id, 10));
+    paramIdx++;
+  } else if (
+    filters.is_laptop_pc === true ||
+    filters.is_laptop_pc === 'true' ||
+    filters.category_name === 'PC/LAPTOP'
+  ) {
     conditions.push(`(ic.name ILIKE $${paramIdx} OR ic.name ILIKE $${paramIdx + 1})`);
     params.push('%PC%', '%LAPTOP%');
     paramIdx += 2;
   }
 
+  // 4. Filter prioritas
+  if (filters.priority_id) {
+    conditions.push(`il.priority_id = $${paramIdx}`);
+    params.push(parseInt(filters.priority_id, 10));
+    paramIdx++;
+  }
+
+  // 5. Filter status dokumen
+  if (filters.doc_status && filters.doc_status !== 'ALL') {
+    conditions.push(`bd.status = $${paramIdx}`);
+    params.push(filters.doc_status);
+    paramIdx++;
+  }
+
+  // 6. Filter period_id
   if (filters.period_id) {
     conditions.push(`bd.period_id = $${paramIdx}`);
     params.push(parseInt(filters.period_id, 10));
     paramIdx++;
   }
 
+  // 7. Filter company_id / company_code
   if (filters.company_id) {
     conditions.push(`un.company_id = $${paramIdx}`);
     params.push(parseInt(filters.company_id, 10));
     paramIdx++;
   }
+  if (filters.company_code) {
+    conditions.push(`comp.code = $${paramIdx}`);
+    params.push(filters.company_code.trim().toUpperCase());
+    paramIdx++;
+  }
 
+  // 8. Filter search (nama barang, nama/kode unit, nama kategori, nama/kode COA)
   if (filters.search && filters.search.trim()) {
     conditions.push(
-      `(il.name ILIKE $${paramIdx} OR un.name ILIKE $${paramIdx} OR un.code ILIKE $${paramIdx})`
+      `(il.name ILIKE $${paramIdx} OR un.name ILIKE $${paramIdx} OR un.code ILIKE $${paramIdx} OR ic.name ILIKE $${paramIdx} OR c.name ILIKE $${paramIdx} OR c.code ILIKE $${paramIdx})`
     );
     params.push(`%${filters.search.trim()}%`);
     paramIdx++;
@@ -428,24 +501,48 @@ const findAllCrossUnit = async (filters = {}, user, client = db) => {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const countRes = await client.query(
-    `SELECT COUNT(*) FROM investment_lines il
-     JOIN budget_docs bd ON bd.id = il.doc_id
-     JOIN units un ON un.id = bd.unit_id
-     JOIN investment_categories ic ON ic.id = il.category_id
-     ${whereClause}`,
-    params
-  );
-  const total = parseInt(countRes.rows[0].count, 10);
+  const fromJoinClause = `
+    FROM investment_lines il
+    JOIN budget_docs bd ON bd.id = il.doc_id
+    JOIN periods p ON p.id = bd.period_id
+    JOIN units un ON un.id = bd.unit_id
+    JOIN companies comp ON comp.id = un.company_id
+    JOIN investment_categories ic ON ic.id = il.category_id
+    LEFT JOIN priorities prio ON prio.id = il.priority_id
+    LEFT JOIN coas c ON c.id = il.coa_id
+    ${whereClause}
+  `;
 
+  // Query Totals
+  const totalsQuery = `
+    SELECT 
+      COUNT(il.id)::int AS total_lines,
+      COUNT(DISTINCT bd.unit_id)::int AS total_units,
+      COALESCE(SUM(il.amount), 0)::bigint AS total_amount,
+      COALESCE(SUM(il.depreciation_amount), 0)::bigint AS total_depreciation
+    ${fromJoinClause}
+  `;
+
+  const totalsRes = await client.query(totalsQuery, params);
+  const totalRow = totalsRes.rows[0] || {
+    total_lines: 0,
+    total_units: 0,
+    total_amount: 0,
+    total_depreciation: 0,
+  };
+
+  const totalLines = parseInt(totalRow.total_lines, 10);
   const page = Math.max(1, parseInt(filters.page || 1, 10));
   const perPage = Math.max(1, parseInt(filters.per_page || 50, 10));
+  const totalPages = Math.ceil(totalLines / perPage) || 0;
   const offset = (page - 1) * perPage;
 
+  // Data Query
   const dataQuery = `
     SELECT 
       il.id,
       il.doc_id,
+      bd.status AS doc_status,
       bd.period_id,
       p.year AS period_year,
       bd.unit_id,
@@ -476,36 +573,72 @@ const findAllCrossUnit = async (filters = {}, user, client = db) => {
       il.version,
       il.created_at,
       il.updated_at
-    FROM investment_lines il
-    JOIN budget_docs bd ON bd.id = il.doc_id
-    JOIN periods p ON p.id = bd.period_id
-    JOIN units un ON un.id = bd.unit_id
-    JOIN companies comp ON comp.id = un.company_id
-    JOIN investment_categories ic ON ic.id = il.category_id
-    LEFT JOIN priorities prio ON prio.id = il.priority_id
-    LEFT JOIN coas c ON c.id = il.coa_id
-    ${whereClause}
+    ${fromJoinClause}
     ORDER BY un.code ASC, il.id ASC
     LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
   `;
 
-  params.push(perPage, offset);
-  const dataRes = await client.query(dataQuery, params);
+  const queryParams = [...params, perPage, offset];
+  const dataRes = await client.query(dataQuery, queryParams);
 
   return {
     data: dataRes.rows.map((r) => ({
-      ...r,
-      qty: parseInt(r.qty, 10),
-      price: parseInt(r.price, 10),
-      amount: parseInt(r.amount, 10),
-      useful_life_months: parseInt(r.useful_life_months, 10),
-      depreciation_amount: parseInt(r.depreciation_amount, 10),
-      version: parseInt(r.version, 10),
+      id: r.id,
+      doc_id: r.doc_id,
+      doc_status: r.doc_status,
+      unit: {
+        id: r.unit_id,
+        code: r.unit_code,
+        name: r.unit_name,
+        company_code: r.company_code,
+      },
+      name: r.name,
+      category: {
+        id: r.category_id,
+        name: r.category_name,
+      },
+      priority: {
+        id: r.priority_id,
+        name: r.priority_name || '—',
+      },
+      coa: {
+        id: r.coa_id,
+        code: r.coa_code,
+        name: r.coa_name,
+      },
+      qty: parseInt(r.qty, 10) || 0,
+      price: parseInt(r.price, 10) || 0,
+      amount: parseInt(r.amount, 10) || 0,
+      plan_month: parseInt(r.plan_month, 10) || 1,
+      useful_life_months: parseInt(r.useful_life_months, 10) || 0,
+      depreciation_amount: parseInt(r.depreciation_amount, 10) || 0,
+      strategic_objective: r.strategic_objective,
+      kpi: r.kpi,
+      work_program: r.work_program,
+      strategic_action: r.strategic_action,
+      note: r.note,
+      version: parseInt(r.version, 10) || 1,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      // Flat properties untuk kompatibilitas ke belakang (LaptopPcPage)
+      unit_code: r.unit_code,
+      unit_name: r.unit_name,
+      category_name: r.category_name,
+      priority_name: r.priority_name,
+      coa_code: r.coa_code,
+      coa_name: r.coa_name,
     })),
     meta: {
       page,
       per_page: perPage,
-      total,
+      total: totalLines,
+      total_pages: totalPages,
+    },
+    totals: {
+      total_amount: Number(totalRow.total_amount),
+      total_depreciation: Number(totalRow.total_depreciation),
+      total_units: parseInt(totalRow.total_units, 10),
+      total_lines: totalLines,
     },
   };
 };

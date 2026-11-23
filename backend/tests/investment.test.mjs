@@ -392,11 +392,12 @@ describe('Investment Budget Test Suite (Fase 4 - BR-01, BR-15, BR-16, FR-I1 s.d.
   });
 
   it('8. RBAC & Akses Lintas Unit Laptop & PC (FR-I7 & Mockup 15-laptop-pc)', async () => {
-    // 1. PIC Rina mencoba akses tampilan lintas unit -> 403 Forbidden
+    // 1. PIC Rina mengakses GET /api/investment-lines (Fase 3d: diizinkan sebatas unitnya)
     const picCrossRes = await request(app)
       .get('/api/investment-lines')
       .set('Cookie', picRina.cookie);
-    expect(picCrossRes.status).toBe(403);
+    expect(picCrossRes.status).toBe(200);
+    expect(picCrossRes.body.data.every((l) => (l.unit?.id || l.unit_id) === testUnit1Id)).toBe(true);
 
     // 2. PIC Rina mencoba manipulasi dokumen Unit 2 -> 403/404
     const picHackedRes = await request(app)
