@@ -85,6 +85,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Global Rate Limiting untuk semua rute /api
 app.use('/api', globalRateLimiter);
 
+// Endpoint Diagnostik Ringan (bebas session & bebas DB hang)
+app.get('/api/ping', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Backend Express di Vercel hidup dan siap melayani request!',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
+
+app.get('/api/test-db', require('./controllers/health.controller').getTestDb);
+
 // Session Store PostgreSQL
 app.use(
   session({
@@ -92,6 +107,7 @@ app.use(
       pool: db.pool,
       tableName: 'session',
       createTableIfMissing: false,
+      errorLog: (err) => console.error('[pgSession Error]:', err.message),
     }),
     secret: sessionSecret,
     resave: false,
