@@ -13,25 +13,44 @@ const sslOption =
       ? { rejectUnauthorized: false }
       : false;
 
-const poolConfig = process.env.DATABASE_URL
-  ? {
-      connectionString: process.env.DATABASE_URL,
-      ssl: sslOption,
-      max: 2,
-      idleTimeoutMillis: 1000,
-      connectionTimeoutMillis: 5000,
-    }
-  : {
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      database: process.env.DB_NAME || 'postgres',
+let poolConfig;
+
+if (process.env.DATABASE_URL) {
+  try {
+    const parsed = new URL(process.env.DATABASE_URL);
+    poolConfig = {
+      user: decodeURIComponent(parsed.username),
+      password: process.env.DB_PASSWORD || decodeURIComponent(parsed.password),
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '5432', 10),
+      database: parsed.pathname.replace(/^\//, '') || 'postgres',
       ssl: sslOption,
       max: 2,
       idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 5000,
     };
+  } catch {
+    poolConfig = {
+      connectionString: process.env.DATABASE_URL,
+      ssl: sslOption,
+      max: 2,
+      idleTimeoutMillis: 1000,
+      connectionTimeoutMillis: 5000,
+    };
+  }
+} else {
+  poolConfig = {
+    host: process.env.DB_HOST || process.env.DB_RKAP_POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER || process.env.DB_RKAP_POSTGRES_USER || 'postgres',
+    password: process.env.DB_PASSWORD || process.env.DB_RKAP_POSTGRES_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || process.env.DB_RKAP_POSTGRES_DATABASE || 'postgres',
+    ssl: sslOption,
+    max: 2,
+    idleTimeoutMillis: 1000,
+    connectionTimeoutMillis: 5000,
+  };
+}
 
 const pool = new Pool(poolConfig);
 
