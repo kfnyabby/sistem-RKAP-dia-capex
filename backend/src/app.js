@@ -14,7 +14,16 @@ const unwrap = (m) => {
   return curr;
 };
 
-const rawRoutes = require('./routes');
+let rawRoutes;
+try {
+  rawRoutes = require('./routes/index.js');
+} catch {
+  try {
+    rawRoutes = require('./routes/index.cjs');
+  } catch {
+    rawRoutes = require('./routes');
+  }
+}
 const routes = unwrap(rawRoutes);
 
 const rawErrorHandler = require('./middleware/errorHandler');
