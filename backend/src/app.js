@@ -107,6 +107,7 @@ app.use(
       pool: db.pool,
       tableName: 'session',
       createTableIfMissing: false,
+      pruneSessionInterval: false,
       errorLog: (err) => console.error('[pgSession Error]:', err.message),
     }),
     secret: sessionSecret,
@@ -136,4 +137,3 @@ app.use('/api', routes);
 app.use(errorHandler);
 
 module.exports = app;
-module.exports.default = app;

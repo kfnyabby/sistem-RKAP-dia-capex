@@ -3,23 +3,12 @@ const app = require('./src/app');
 
 const PORT = process.env.PORT || 5000;
 
-if (require.main === module && !process.env.VERCEL) {
+// Jalankan listener port hanya pada server lokal (bukan di cloud/serverless Vercel)
+if (require.main === module && !process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://localhost:${PORT}`);
   });
 }
 
-// Request handler wrapper untuk Vercel Serverless
-function handler(req, res) {
-  return app(req, res);
-}
-
-// Hubungkan properti app ke handler
-Object.setPrototypeOf(handler, app);
-
-// Ekspor lengkap untuk semua format module loader (CommonJS & ESM default)
+// Ekspor tunggal Express app untuk runtime Vercel Serverless
 module.exports = app;
-module.exports.default = app;
-module.exports.handler = handler;
-module.exports.app = app;
-exports = module.exports;
