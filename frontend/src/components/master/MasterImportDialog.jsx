@@ -7,6 +7,7 @@ export default function MasterImportDialog({ isOpen, onClose, type = 'items', on
   const [companyCode, setCompanyCode] = useState('CN');
   const [updatePrices, setUpdatePrices] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [dryRunResult, setDryRunResult] = useState(null);
@@ -19,16 +20,43 @@ export default function MasterImportDialog({ isOpen, onClose, type = 'items', on
 
   let dialogTitle = 'Import Master Data';
   let fileInstruction = 'Pilih berkas spreadsheet (.xlsx)';
+  let templateFileName = 'Template_Import_Master.xlsx';
   if (isItems) {
     dialogTitle = 'Import Master Barang Logistik (.xlsx)';
     fileInstruction = 'Sheet MASTER_BARANG dengan kolom ID, Kode Produk, Nama, Golongan, UOM, HPP, dsb.';
+    templateFileName = 'Template_Import_Barang.xlsx';
   } else if (isCoas) {
     dialogTitle = 'Import Master COA & Kategori 3-Sheet (.xlsx)';
     fileInstruction = 'Memproses 3 sheet sekaligus: Master COA, Kategori Biaya, dan Kategori Investasi.';
+    templateFileName = 'Template_Import_COA_dan_Kategori.xlsx';
   } else if (isUnits) {
     dialogTitle = 'Import Draf Master Unit (.xlsx)';
     fileInstruction = 'Sheet Master_Unit draf dengan ID Draf, Kode Final, Nama Final, dan Rekomendasi.';
+    templateFileName = 'Template_Import_Unit.xlsx';
   }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      setErrorMsg(null);
+      const res = await masterApi.downloadTemplate(type);
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', templateFileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Gagal mengunduh template spreadsheet');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -163,6 +191,38 @@ export default function MasterImportDialog({ isOpen, onClose, type = 'items', on
             </div>
           </div>
         )}
+
+        {/* Banner Unduh Template Spreadsheet */}
+        <div
+          className="card"
+          style={{
+            background: '#ECE8F5',
+            borderColor: '#CFC8E6',
+            color: '#3A3F63',
+            marginBottom: '16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: '220px' }}>
+            <div style={{ fontWeight: 600, fontSize: '13px' }}>Belum memiliki format berkas?</div>
+            <div style={{ fontSize: '12px', color: '#5E6070', marginTop: '2px' }}>
+              Unduh template spreadsheet resmi yang sesuai dengan aturan kolom sistem RKAP.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn b2"
+            onClick={handleDownloadTemplate}
+            disabled={downloadingTemplate}
+            style={{ minHeight: '36px', padding: '0 12px', fontSize: '13px' }}
+          >
+            {downloadingTemplate ? 'Mengunduh...' : '📥 Unduh Template (.xlsx)'}
+          </button>
+        </div>
 
         {!successMsg && (
           <form onSubmit={handleDryRun}>

@@ -1,6 +1,7 @@
 const multer = require('multer');
 const masterImportService = require('../services/masterImport.service');
 const unitImportService = require('../services/unitImport.service');
+const masterTemplateService = require('../services/masterTemplate.service');
 
 // Konfigurasi Multer (simpan di memori buffer, khusus .xlsx maksimal 15MB)
 const storage = multer.memoryStorage();
@@ -86,9 +87,26 @@ const importUnits = async (req, res, next) => {
   }
 };
 
+const downloadTemplate = async (req, res, next) => {
+  try {
+    const type = req.query.type || req.params.type;
+    const { buffer, filename } = await masterTemplateService.generateMasterTemplate(type);
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   upload,
   importItems,
   importCoas,
   importUnits,
+  downloadTemplate,
 };

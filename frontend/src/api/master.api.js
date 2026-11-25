@@ -166,6 +166,15 @@ export const masterApi = {
     });
     return res.data;
   },
+
+  // --- DOWNLOAD IMPORT TEMPLATES ---
+  downloadTemplate: async (type) => {
+    const res = await api.get('/master/templates', {
+      params: { type },
+      responseType: 'blob',
+    });
+    return res;
+  },
 };
 
 export default masterApi;

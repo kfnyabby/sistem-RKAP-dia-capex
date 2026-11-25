@@ -108,7 +108,7 @@ export default function App() {
             <Route path="laporan/rekap" element={<LaporanRekapPage />} />
             <Route path="laporan/matriks" element={<LaporanMatriksPage />} />
 
-            {/* Pengaturan (Khusus Akuntansi Sesuai Instruksi User) */}
+            {/* Pengaturan (Khusus Akuntansi) */}
             <Route
               path="pengaturan"
               element={
@@ -125,7 +125,7 @@ export default function App() {
               element={
                 <ProtectedRoute
                   allowedRoles={['akuntansi']}
-                  deniedMessage="Akses ditolak: Menu Pengaturan hanya dapat diakses oleh Akuntansi."
+                  deniedMessage="Akses ditolak: Menu Pengaturan Master Data hanya dapat diakses oleh Akuntansi."
                 >
                   <PengaturanMasterPage />
                 </ProtectedRoute>

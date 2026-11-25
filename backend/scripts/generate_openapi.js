@@ -1144,13 +1144,19 @@ function dumpYaml(obj, indent = 0) {
   return res;
 }
 
+// Pastikan folder docs ada
+const docsDir = path.resolve(__dirname, '../../docs');
+if (!fs.existsSync(docsDir)) {
+  fs.mkdirSync(docsDir, { recursive: true });
+}
+
 // Tulis berkas docs/openapi.json
 const jsonOutput = JSON.stringify(spec, null, 2);
-fs.writeFileSync(path.resolve('./docs/openapi.json'), jsonOutput, 'utf8');
+fs.writeFileSync(path.join(docsDir, 'openapi.json'), jsonOutput, 'utf8');
 
 // Tulis berkas docs/openapi.yaml
 const yamlOutput = dumpYaml(spec);
-fs.writeFileSync(path.resolve('./docs/openapi.yaml'), yamlOutput, 'utf8');
+fs.writeFileSync(path.join(docsDir, 'openapi.yaml'), yamlOutput, 'utf8');
 
 console.log(`OpenAPI berhasil dihasilkan:`);
 console.log(`- Total Paths: ${Object.keys(spec.paths).length}`);

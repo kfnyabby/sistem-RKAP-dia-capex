@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../auth/AuthContext';
 import PageHeader from '../components/common/PageHeader';
 import Chip from '../components/common/Chip';
 import PengaturanSubNav from '../components/pengaturan/PengaturanSubNav';
@@ -14,7 +15,39 @@ import UnitFormModal from '../components/master/UnitFormModal';
 
 export default function PengaturanMasterPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAkuntansi = user?.role === 'akuntansi';
   const [activeTab, setActiveTab] = useState('barang'); // 'barang' | 'coa' | 'kategori_biaya' | 'kategori_investasi' | 'unit' | 'referensi'
+
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+
+  const handleDownloadTemplate = async (type) => {
+    try {
+      setDownloadingTemplate(true);
+      const res = await masterApi.downloadTemplate(type);
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const fileName =
+        type === 'items'
+          ? 'Template_Import_Barang.xlsx'
+          : type === 'coas'
+          ? 'Template_Import_COA_dan_Kategori.xlsx'
+          : 'Template_Import_Unit.xlsx';
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal mengunduh template spreadsheet');
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
 
   // Items State (Pagination dari server: ±3.200 baris)
   const [itemPage, setItemPage] = useState(1);
@@ -142,10 +175,11 @@ export default function PengaturanMasterPage() {
     return () => clearTimeout(handler);
   }, [itemSearch]);
 
-  // 1. Quality Report via TanStack Query
+  // 1. Quality Report via TanStack Query (khusus Akuntansi)
   const { data: qualityReport } = useQuery({
     queryKey: ['qualityReport'],
     queryFn: masterApi.getQualityReport,
+    enabled: isAkuntansi,
   });
 
   // 2. Reference Data via TanStack Query
@@ -315,8 +349,8 @@ export default function PengaturanMasterPage() {
           ======================================================== */}
       {activeTab === 'barang' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Kartu Hasil Pemeriksaan Import Terakhir */}
-          {lastImport ? (
+          {/* Kartu Hasil Pemeriksaan Import Terakhir (Khusus Akuntansi) */}
+          {isAkuntansi && lastImport ? (
             <div className="card">
               <h2>Hasil pemeriksaan import terakhir · {lastImport.filename || 'Master_Barang_Logistik.xlsx'}</h2>
               <div className="g4">
@@ -348,7 +382,7 @@ export default function PengaturanMasterPage() {
                 </span>
               </p>
             </div>
-          ) : (
+          ) : isAkuntansi ? (
             <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h2 style={{ margin: 0 }}>Hasil pemeriksaan import terakhir</h2>
@@ -356,18 +390,45 @@ export default function PengaturanMasterPage() {
                   Belum ada import. Unggah berkas Excel Master Barang Logistik untuk memulai pengisian katalog.
                 </div>
               </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn b2"
+                  onClick={() => handleDownloadTemplate('items')}
+                  disabled={downloadingTemplate}
+                >
+                  {downloadingTemplate ? 'Mengunduh...' : 'Unduh template (xlsx)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn b2"
+                  onClick={() => setImportDialog({ open: true, type: 'items' })}
+                >
+                  Import master (xlsx)
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Katalog Master Barang Logistik</h2>
+                <div style={{ fontSize: '14px', color: '#5E6070', marginTop: '4px' }}>
+                  Daftar katalog master barang logistik beserta kode produk, HPP CN/CNH, dan pemetaan COA biaya.
+                </div>
+              </div>
               <button
                 type="button"
                 className="btn b2"
-                onClick={() => setImportDialog({ open: true, type: 'items' })}
+                onClick={() => handleDownloadTemplate('items')}
+                disabled={downloadingTemplate}
               >
-                Import master (xlsx)
+                {downloadingTemplate ? 'Mengunduh...' : '📥 Unduh template barang (xlsx)'}
               </button>
             </div>
           )}
 
           {/* Kotak Peringatan Harga */}
-          {priceWarning && (
+          {isAkuntansi && priceWarning && (
             <div
               className="card"
               style={{
@@ -451,18 +512,31 @@ export default function PengaturanMasterPage() {
             <button
               type="button"
               className="btn b2"
-              onClick={() => setImportDialog({ open: true, type: 'items' })}
+              onClick={() => handleDownloadTemplate('items')}
+              disabled={downloadingTemplate}
             >
-              Import master (xlsx)
+              {downloadingTemplate ? 'Mengunduh...' : 'Unduh template (xlsx)'}
             </button>
 
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setItemModal({ open: true, item: null })}
-            >
-              Tambah barang
-            </button>
+            {isAkuntansi && (
+              <>
+                <button
+                  type="button"
+                  className="btn b2"
+                  onClick={() => setImportDialog({ open: true, type: 'items' })}
+                >
+                  Import master (xlsx)
+                </button>
+
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setItemModal({ open: true, item: null })}
+                >
+                  Tambah barang
+                </button>
+              </>
+            )}
           </div>
 
           {/* Tabel Barang Bernomor dengan Paginasi dari Server */}
@@ -480,19 +554,19 @@ export default function PengaturanMasterPage() {
                   <th className="r">HPP (CNH)</th>
                   <th>COA biaya</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Aksi</th>
+                  {isAkuntansi && <th style={{ textAlign: 'center' }}>Aksi</th>}
                 </tr>
               </thead>
               <tbody>
                 {loadingItems ? (
                   <tr>
-                    <td colSpan="11" style={{ textAlign: 'center', padding: '32px', color: '#5E6070' }}>
+                    <td colSpan={isAkuntansi ? 11 : 10} style={{ textAlign: 'center', padding: '32px', color: '#5E6070' }}>
                       Memuat katalog data barang...
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan="11" style={{ textAlign: 'center', padding: '32px', color: '#5E6070' }}>
+                    <td colSpan={isAkuntansi ? 11 : 10} style={{ textAlign: 'center', padding: '32px', color: '#5E6070' }}>
                       Tidak ada barang yang sesuai dengan filter pencarian.
                     </td>
                   </tr>
@@ -517,33 +591,35 @@ export default function PengaturanMasterPage() {
                             {item.is_active ? 'Aktif' : 'Tidak aktif'}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          <button
-                            type="button"
-                            className="btn b2"
-                            onClick={() => setPriceModal({ open: true, item })}
-                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
-                          >
-                            Ubah harga
-                          </button>
-                          <button
-                            type="button"
-                            className="btn b2"
-                            onClick={() => setItemModal({ open: true, item })}
-                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
-                          >
-                            Ubah
-                          </button>
-                          <button
-                            type="button"
-                            className="btn b3"
-                            onClick={() => handleOpenDelete('item', item)}
-                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
-                            title="Hapus Barang"
-                          >
-                            Hapus
-                          </button>
-                        </td>
+                        {isAkuntansi && (
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              className="btn b2"
+                              onClick={() => setPriceModal({ open: true, item })}
+                              style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
+                            >
+                              Ubah harga
+                            </button>
+                            <button
+                              type="button"
+                              className="btn b2"
+                              onClick={() => setItemModal({ open: true, item })}
+                              style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
+                            >
+                              Ubah
+                            </button>
+                            <button
+                              type="button"
+                              className="btn b3"
+                              onClick={() => handleOpenDelete('item', item)}
+                              style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                              title="Hapus Barang"
+                            >
+                              Hapus
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -647,18 +723,31 @@ export default function PengaturanMasterPage() {
             <button
               type="button"
               className="btn b2"
-              onClick={() => setImportDialog({ open: true, type: 'coas' })}
+              onClick={() => handleDownloadTemplate('coas')}
+              disabled={downloadingTemplate}
             >
-              Import COA (xlsx)
+              {downloadingTemplate ? 'Mengunduh...' : 'Unduh template (xlsx)'}
             </button>
 
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setCoaModal({ open: true, coa: null })}
-            >
-              Tambah COA
-            </button>
+            {isAkuntansi && (
+              <>
+                <button
+                  type="button"
+                  className="btn b2"
+                  onClick={() => setImportDialog({ open: true, type: 'coas' })}
+                >
+                  Import COA (xlsx)
+                </button>
+
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setCoaModal({ open: true, coa: null })}
+                >
+                  Tambah COA
+                </button>
+              </>
+            )}
           </div>
 
           <div className="card sc" style={{ padding: 0 }}>
@@ -671,13 +760,13 @@ export default function PengaturanMasterPage() {
                   <th>Kategori</th>
                   <th>Kelompok Akun</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Aksi</th>
+                  {isAkuntansi && <th style={{ textAlign: 'center' }}>Aksi</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredCoas.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#5E6070' }}>
+                    <td colSpan={isAkuntansi ? 7 : 6} style={{ textAlign: 'center', padding: '24px', color: '#5E6070' }}>
                       Tidak ada akun COA yang terdaftar sesuai filter.
                     </td>
                   </tr>
@@ -698,25 +787,27 @@ export default function PengaturanMasterPage() {
                           {coa.is_active ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          className="btn b2"
-                          onClick={() => setCoaModal({ open: true, coa })}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
-                        >
-                          Ubah
-                        </button>
-                        <button
-                          type="button"
-                          className="btn b3"
-                          onClick={() => handleOpenDelete('coa', coa)}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
-                          title="Hapus COA"
-                        >
-                          Hapus
-                        </button>
-                      </td>
+                      {isAkuntansi && (
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button
+                            type="button"
+                            className="btn b2"
+                            onClick={() => setCoaModal({ open: true, coa })}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
+                          >
+                            Ubah
+                          </button>
+                          <button
+                            type="button"
+                            className="btn b3"
+                            onClick={() => handleOpenDelete('coa', coa)}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                            title="Hapus COA"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -732,8 +823,16 @@ export default function PengaturanMasterPage() {
       {activeTab === 'kategori_biaya' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="card sc" style={{ padding: 0 }}>
-            <div style={{ padding: '16px 16px 8px' }}>
+            <div style={{ padding: '16px 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <h2 style={{ margin: 0 }}>Kelompok biaya (Jenis COA)</h2>
+              <button
+                type="button"
+                className="btn b2"
+                onClick={() => handleDownloadTemplate('coas')}
+                disabled={downloadingTemplate}
+              >
+                {downloadingTemplate ? 'Mengunduh...' : '📥 Unduh template COA & Kategori (.xlsx)'}
+              </button>
             </div>
             <table>
               <thead>
@@ -776,8 +875,16 @@ export default function PengaturanMasterPage() {
       {activeTab === 'kategori_investasi' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="card sc" style={{ padding: 0 }}>
-            <div style={{ padding: '16px 16px 8px' }}>
+            <div style={{ padding: '16px 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <h2 style={{ margin: 0 }}>Kategori investasi, masa manfaat, dan COA penyusutan</h2>
+              <button
+                type="button"
+                className="btn b2"
+                onClick={() => handleDownloadTemplate('coas')}
+                disabled={downloadingTemplate}
+              >
+                {downloadingTemplate ? 'Mengunduh...' : '📥 Unduh template COA & Kategori (.xlsx)'}
+              </button>
             </div>
             <table>
               <thead>
@@ -787,13 +894,13 @@ export default function PengaturanMasterPage() {
                   <th className="r">Masa manfaat (bulan)</th>
                   <th>Kode COA</th>
                   <th>Nama COA</th>
-                  <th style={{ textAlign: 'center' }}>Aksi</th>
+                  {isAkuntansi && <th style={{ textAlign: 'center' }}>Aksi</th>}
                 </tr>
               </thead>
               <tbody>
                 {investmentCategories.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: '#5E6070' }}>
+                    <td colSpan={isAkuntansi ? 6 : 5} style={{ textAlign: 'center', padding: '24px', color: '#5E6070' }}>
                       Belum ada kategori investasi yang terdaftar.
                     </td>
                   </tr>
@@ -805,16 +912,18 @@ export default function PengaturanMasterPage() {
                       <td className="r" style={{ fontWeight: 600 }}>{cat.useful_life_months}</td>
                       <td>{cat.coa_code || '—'}</td>
                       <td>{cat.coa_name || <span style={{ color: '#8A1F1B' }}>Belum Ditentukan</span>}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          className="btn b2"
-                          onClick={() => setInvModal({ open: true, category: cat })}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
-                        >
-                          Ubah
-                        </button>
-                      </td>
+                      {isAkuntansi && (
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn b2"
+                            onClick={() => setInvModal({ open: true, category: cat })}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                          >
+                            Ubah
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -872,18 +981,31 @@ export default function PengaturanMasterPage() {
             <button
               type="button"
               className="btn b2"
-              onClick={() => setImportDialog({ open: true, type: 'units' })}
+              onClick={() => handleDownloadTemplate('units')}
+              disabled={downloadingTemplate}
             >
-              Import draf unit (xlsx)
+              {downloadingTemplate ? 'Mengunduh...' : 'Unduh template (xlsx)'}
             </button>
 
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setUnitModal({ open: true, unit: null })}
-            >
-              Tambah unit
-            </button>
+            {isAkuntansi && (
+              <>
+                <button
+                  type="button"
+                  className="btn b2"
+                  onClick={() => setImportDialog({ open: true, type: 'units' })}
+                >
+                  Import draf unit (xlsx)
+                </button>
+
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setUnitModal({ open: true, unit: null })}
+                >
+                  Tambah unit
+                </button>
+              </>
+            )}
           </div>
 
           <div className="card sc" style={{ padding: 0 }}>
@@ -900,13 +1022,13 @@ export default function PengaturanMasterPage() {
                   <th>COA Pendapatan</th>
                   <th>Isu / Review</th>
                   <th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Aksi</th>
+                  {isAkuntansi && <th style={{ textAlign: 'center' }}>Aksi</th>}
                 </tr>
               </thead>
               <tbody>
                 {filteredUnits.length === 0 ? (
                   <tr>
-                    <td colSpan="11" style={{ textAlign: 'center', padding: '24px', color: '#5E6070' }}>
+                    <td colSpan={isAkuntansi ? 11 : 10} style={{ textAlign: 'center', padding: '24px', color: '#5E6070' }}>
                       Tidak ada unit kerja yang sesuai dengan filter.
                     </td>
                   </tr>
@@ -948,25 +1070,27 @@ export default function PengaturanMasterPage() {
                           {u.is_active ? 'Aktif' : 'Nonaktif'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          className="btn b2"
-                          onClick={() => setUnitModal({ open: true, unit: u })}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
-                        >
-                          Ubah
-                        </button>
-                        <button
-                          type="button"
-                          className="btn b3"
-                          onClick={() => handleOpenDelete('unit', u)}
-                          style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
-                          title="Hapus Unit"
-                        >
-                          Hapus
-                        </button>
-                      </td>
+                      {isAkuntansi && (
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button
+                            type="button"
+                            className="btn b2"
+                            onClick={() => setUnitModal({ open: true, unit: u })}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px', marginRight: '6px' }}
+                          >
+                            Ubah
+                          </button>
+                          <button
+                            type="button"
+                            className="btn b3"
+                            onClick={() => handleOpenDelete('unit', u)}
+                            style={{ minHeight: '32px', padding: '0 8px', fontSize: '12px' }}
+                            title="Hapus Unit"
+                          >
+                            Hapus
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

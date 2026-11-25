@@ -9,6 +9,10 @@ const router = express.Router();
 // Seluruh rute master data mewajibkan autentikasi
 router.use(requireAuth);
 
+// --- TEMPLATES IMPORT MASTER DATA (Dapat diunduh oleh semua role) ---
+router.get('/master/templates', importController.downloadTemplate);
+router.get('/master/templates/:type', importController.downloadTemplate);
+
 // --- ITEMS & QUALITY REPORT ---
 router.get('/items/quality-report', requireRole(['akuntansi']), masterController.getQualityReport);
 router.post(

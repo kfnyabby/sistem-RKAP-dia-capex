@@ -768,5 +768,65 @@ describe('Master Data Test Suite (Fase 2)', () => {
       expect(res.body.message).toMatch(/berkas excel rusak/i);
     });
   });
+
+  describe('7. Download Template Import Master Data (/api/master/templates)', () => {
+    it('Permintaan tanpa autentikasi ditolak dengan status 401 Unauthorized', async () => {
+      const res = await request(app).get('/api/master/templates?type=items');
+      expect(res.status).toBe(401);
+    });
+
+    it('PIC dapat mengunduh template master barang (Template_Import_Barang.xlsx)', async () => {
+      const pic = await loginAs('rina@ptcn.id');
+
+      const res = await request(app)
+        .get('/api/master/templates?type=items')
+        .set('Cookie', pic.cookie)
+        .responseType('blob');
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml.sheet');
+      expect(res.headers['content-disposition']).toContain('Template_Import_Barang.xlsx');
+      expect(res.body.length).toBeGreaterThan(1000);
+    });
+
+    it('Manager dapat mengunduh template COA & Kategori 3-sheet (Template_Import_COA_dan_Kategori.xlsx)', async () => {
+      const mgr = await loginAs('budi@ptcn.id');
+
+      const res = await request(app)
+        .get('/api/master/templates?type=coas')
+        .set('Cookie', mgr.cookie)
+        .responseType('blob');
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml.sheet');
+      expect(res.headers['content-disposition']).toContain('Template_Import_COA_dan_Kategori.xlsx');
+      expect(res.body.length).toBeGreaterThan(1000);
+    });
+
+    it('Akuntansi dapat mengunduh template master unit (Template_Import_Unit.xlsx)', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const res = await request(app)
+        .get('/api/master/templates/units')
+        .set('Cookie', akt.cookie)
+        .responseType('blob');
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('spreadsheetml.sheet');
+      expect(res.headers['content-disposition']).toContain('Template_Import_Unit.xlsx');
+      expect(res.body.length).toBeGreaterThan(1000);
+    });
+
+    it('Permintaan dengan jenis template tidak dikenal ditolak dengan status 400', async () => {
+      const akt = await loginAs('dya@ptcn.id');
+
+      const res = await request(app)
+        .get('/api/master/templates?type=unknown_master')
+        .set('Cookie', akt.cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/tidak valid/i);
+    });
+  });
 });
 

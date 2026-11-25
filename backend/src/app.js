@@ -33,12 +33,17 @@ const defaultOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
   : defaultOrigins;
+const isVercel = Boolean(process.env.VERCEL);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Izinkan request tanpa origin (seperti Supertest, curl, server-to-server) atau yang ada di daftar whitelist
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Izinkan request tanpa origin (seperti Supertest, curl, server-to-server), origin di whitelist, atau domain vercel
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        (isVercel && origin.endsWith('.vercel.app'))
+      ) {
         return callback(null, true);
       }
       const err = new Error(`Akses diblokir oleh kebijakan CORS untuk origin: ${origin}`);
