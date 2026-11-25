@@ -17,6 +17,8 @@ const poolConfig = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
       ssl: sslOption,
+      max: 2,
+      idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 5000,
     }
   : {
@@ -26,6 +28,8 @@ const poolConfig = process.env.DATABASE_URL
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'postgres',
       ssl: sslOption,
+      max: 2,
+      idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 5000,
     };
 

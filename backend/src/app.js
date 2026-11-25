@@ -86,19 +86,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api', globalRateLimiter);
 
 // Endpoint Diagnostik Ringan (bebas session & bebas DB hang)
-app.get('/api/ping', (req, res) => {
+app.get(['/ping', '/api/ping'], (req, res) => {
   res.json({
     status: 'ok',
     message: 'Backend Express di Vercel hidup dan siap melayani request!',
+    path: req.path,
+    url: req.url,
     timestamp: new Date().toISOString(),
   });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+app.get(['/health', '/api/health'], (req, res) => {
+  res.json({ status: 'ok', path: req.path, timestamp: new Date() });
 });
 
-app.get('/api/test-db', require('./controllers/health.controller').getTestDb);
+app.get(['/test-db', '/api/test-db'], require('./controllers/health.controller').getTestDb);
 
 // Session Store PostgreSQL
 app.use(
@@ -127,11 +129,12 @@ app.get('/', (req, res) => {
   res.json({ message: 'API RKAP Server is running' });
 });
 
-// Proteksi CSRF untuk semua rute /api
-app.use('/api', csrfProtection);
+// Proteksi CSRF untuk semua rute (dengan prefix /api maupun langsung)
+app.use(['/api', '/'], csrfProtection);
 
-// API Routes
+// API Routes (mendukung dengan prefix /api maupun langsung)
 app.use('/api', routes);
+app.use('/', routes);
 
 // Error Handling Terpusat
 app.use(errorHandler);
