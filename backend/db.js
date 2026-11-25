@@ -1,10 +1,23 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+const isRemoteDb =
+  (process.env.DB_HOST && (process.env.DB_HOST.includes('supabase') || process.env.DB_HOST !== 'localhost')) ||
+  (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')) ||
+  Boolean(process.env.VERCEL);
+
+const sslOption =
+  process.env.DB_SSL === 'false'
+    ? false
+    : process.env.DB_SSL === 'true' || isRemoteDb
+      ? { rejectUnauthorized: false }
+      : false;
+
 const poolConfig = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
+      ssl: sslOption,
+      connectionTimeoutMillis: 10000,
     }
   : {
       host: process.env.DB_HOST || 'localhost',
@@ -12,7 +25,8 @@ const poolConfig = process.env.DATABASE_URL
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'postgres',
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      ssl: sslOption,
+      connectionTimeoutMillis: 10000,
     };
 
 const pool = new Pool(poolConfig);

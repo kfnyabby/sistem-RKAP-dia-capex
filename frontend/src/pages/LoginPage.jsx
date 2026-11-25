@@ -23,8 +23,17 @@ export default function LoginPage() {
       await login(email, password);
       navigate(from, { replace: true });
     } catch (err) {
+      const serverMsg =
+        typeof err.response?.data?.message === 'string'
+          ? err.response.data.message
+          : typeof err.response?.data === 'string'
+            ? err.response.data
+            : null;
       const msg =
-        err.response?.data?.message || err.message || 'Login gagal. Periksa email dan kata sandi Anda.';
+        serverMsg ||
+        (err.response?.status === 500
+          ? 'Terjadi kendala koneksi server backend atau database (HTTP 500). Periksa pengaturan lingkungan server.'
+          : err.message || 'Login gagal. Periksa email dan kata sandi Anda.');
       setError(msg);
     } finally {
       setIsSubmitting(false);
