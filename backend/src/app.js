@@ -136,3 +136,4 @@ app.use('/api', routes);
 app.use(errorHandler);
 
 module.exports = app;
+module.exports.default = app;
