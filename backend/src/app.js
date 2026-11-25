@@ -5,7 +5,14 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const db = require('../db');
 // Helper untuk menangani interop CommonJS vs ES Modules pada bundler Vercel/esbuild
-const unwrap = (m) => (m && m.default ? m.default : m);
+const unwrap = (m) => {
+  if (!m) return m;
+  let curr = m;
+  while (curr && typeof curr === 'object' && (curr.default || curr.router)) {
+    curr = curr.default || curr.router;
+  }
+  return curr;
+};
 
 const rawRoutes = require('./routes');
 const routes = unwrap(rawRoutes);
@@ -15,11 +22,11 @@ const errorHandler = unwrap(rawErrorHandler);
 
 const rawCsrf = require('./middleware/csrfProtection');
 const csrfModule = unwrap(rawCsrf);
-const csrfProtection = csrfModule.csrfProtection || csrfModule;
+const csrfProtection = csrfModule && csrfModule.csrfProtection ? csrfModule.csrfProtection : csrfModule;
 
 const rawRate = require('./middleware/rateLimiter');
 const rateModule = unwrap(rawRate);
-const globalRateLimiter = rateModule.globalRateLimiter || rateModule;
+const globalRateLimiter = rateModule && rateModule.globalRateLimiter ? rateModule.globalRateLimiter : rateModule;
 
 // Validasi variabel lingkungan sesi dengan fallback aman untuk serverless/cloud
 const sessionSecret =
@@ -142,24 +149,27 @@ app.get('/', (req, res) => {
 });
 
 // Proteksi CSRF untuk semua rute (dengan prefix /api maupun langsung)
-if (typeof csrfProtection === 'function') {
-  app.use('/api', csrfProtection);
-  app.use('/', csrfProtection);
+const csrfHandler = typeof csrfProtection === 'function' ? csrfProtection : (csrfProtection && typeof csrfProtection.handle === 'function' ? csrfProtection.handle.bind(csrfProtection) : null);
+if (csrfHandler) {
+  app.use('/api', csrfHandler);
+  app.use('/', csrfHandler);
 } else {
-  console.warn('[CONFIG WARNING] csrfProtection bukan function:', typeof csrfProtection);
+  console.warn('[CONFIG WARNING] csrfProtection bukan function:', typeof csrfProtection, Object.keys(csrfProtection || {}));
 }
 
 // API Routes (mendukung dengan prefix /api maupun langsung)
-if (typeof routes === 'function') {
-  app.use('/api', routes);
-  app.use('/', routes);
+const routerHandler = typeof routes === 'function' ? routes : (routes && typeof routes.handle === 'function' ? routes.handle.bind(routes) : null);
+if (routerHandler) {
+  app.use('/api', routerHandler);
+  app.use('/', routerHandler);
 } else {
-  console.error('[CONFIG ERROR] routes bukan function:', typeof routes);
+  console.error('[CONFIG ERROR] routes tidak dapat digunakan sebagai middleware:', typeof routes, Object.keys(routes || {}));
 }
 
 // Error Handling Terpusat
-if (typeof errorHandler === 'function') {
-  app.use(errorHandler);
+const errHandler = typeof errorHandler === 'function' ? errorHandler : (errorHandler && typeof errorHandler.handle === 'function' ? errorHandler.handle.bind(errorHandler) : null);
+if (errHandler) {
+  app.use(errHandler);
 } else {
   console.error('[CONFIG ERROR] errorHandler bukan function:', typeof errorHandler);
 }

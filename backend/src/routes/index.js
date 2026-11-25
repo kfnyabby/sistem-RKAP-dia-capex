@@ -20,7 +20,14 @@ const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 
 // Helper unwrap ESM/CJS interop pada Vercel/esbuild
-const unwrap = (m) => (m && m.default ? m.default : m);
+const unwrap = (m) => {
+  if (!m) return m;
+  let curr = m;
+  while (curr && typeof curr === 'object' && (curr.default || curr.router)) {
+    curr = curr.default || curr.router;
+  }
+  return typeof curr === 'function' ? curr : (curr && typeof curr.handle === 'function' ? curr.handle.bind(curr) : curr);
+};
 
 const router = express.Router();
 
@@ -75,3 +82,5 @@ router.get('/test-unit-access-failclosed', requireAuth, requireUnitAccess, (req,
 });
 
 module.exports = router;
+module.exports.default = router;
+module.exports.router = router;
