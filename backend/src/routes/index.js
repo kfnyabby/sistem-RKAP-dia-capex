@@ -1,4 +1,3 @@
-console.log('[DEBUG-ROUTES] Initializing routes/index.js...');
 const express = require('express');
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
