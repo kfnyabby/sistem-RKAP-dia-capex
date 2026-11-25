@@ -5,10 +5,20 @@ const db = require('../../db');
 const realizationImportService = require('../services/realizationImport.service');
 const realizationQueryService = require('../services/realizationQuery.service');
 
-// Pastikan folder uploads tersedia
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+const os = require('os');
+
+// Pastikan folder uploads tersedia (gunakan /tmp di serverless Vercel)
+const uploadsDir =
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join(os.tmpdir(), 'uploads')
+    : path.join(__dirname, '../../uploads');
+
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('[UPLOADS WARNING] Gagal membuat direktori uploads:', err.message);
 }
 
 // Konfigurasi Multer diskStorage (simpan ke disk, bukan memori)
