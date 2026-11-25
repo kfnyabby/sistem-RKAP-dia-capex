@@ -35,14 +35,32 @@ const allowedOrigins = process.env.CORS_ORIGIN
   : defaultOrigins;
 const isVercel = Boolean(process.env.VERCEL);
 
+// Helper untuk mendeteksi origin jaringan lokal / LAN (WiFi / Ethernet)
+const isLocalOrLanOrigin = (origin) => {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+    return (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    );
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Izinkan request tanpa origin (seperti Supertest, curl, server-to-server), origin di whitelist, atau domain vercel
+      // Izinkan request tanpa origin (seperti Supertest, curl, server-to-server), origin di whitelist, domain vercel, atau IP LAN lokal
       if (
         !origin ||
         allowedOrigins.includes(origin) ||
-        (isVercel && origin.endsWith('.vercel.app'))
+        (isVercel && origin.endsWith('.vercel.app')) ||
+        isLocalOrLanOrigin(origin)
       ) {
         return callback(null, true);
       }

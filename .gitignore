@@ -45,3 +45,4 @@ coverage/
 uploads/
 backend/uploads/
 
+.vercel

@@ -17,6 +17,19 @@ const poolConfig = process.env.DATABASE_URL
 
 const pool = new Pool(poolConfig);
 
+if (process.env.NODE_ENV !== 'test') {
+  if (process.env.DATABASE_URL) {
+    try {
+      const parsed = new URL(process.env.DATABASE_URL);
+      console.log(`[DB Config] Menggunakan DATABASE_URL: user="${parsed.username}", host="${parsed.hostname}", port=${parsed.port || 5432}, db="${parsed.pathname.replace(/^\//, '')}"`);
+    } catch {
+      console.log('[DB Config] Menggunakan DATABASE_URL');
+    }
+  } else {
+    console.log(`[DB Config] Menggunakan variabel DB_*: user="${process.env.DB_USER || 'postgres'}", host="${process.env.DB_HOST || 'localhost'}", port=${process.env.DB_PORT || 5432}, db="${process.env.DB_NAME || 'postgres'}"`);
+  }
+}
+
 pool.on('connect', () => {
   console.log('Connected to PostgreSQL database');
 });

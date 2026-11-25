@@ -238,14 +238,14 @@ async function seed() {
         [itemIdx, code]
       );
 
-      // Harga CN & CNH di period 1 & 2
+      // Harga CN & CNH
       await client.query(
         `
-        INSERT INTO item_prices (item_id, company_id, period_id, price)
+        INSERT INTO item_prices (item_id, company_id, price)
         VALUES
-        ($1, 1, 1, $2),
-        ($1, 2, 2, $3)
-        ON CONFLICT (item_id, company_id, period_id) DO UPDATE SET price = EXCLUDED.price;
+        ($1, 1, $2),
+        ($1, 2, $3)
+        ON CONFLICT (item_id, company_id) DO UPDATE SET price = EXCLUDED.price;
       `,
         [itemIdx, priceCN, priceCNH]
       );
