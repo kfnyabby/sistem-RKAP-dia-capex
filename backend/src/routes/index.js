@@ -19,40 +19,43 @@ const docsRoutes = require('./docs.routes');
 const requireAuth = require('../middleware/requireAuth');
 const requireUnitAccess = require('../middleware/requireUnitAccess');
 
+// Helper unwrap ESM/CJS interop pada Vercel/esbuild
+const unwrap = (m) => (m && m.default ? m.default : m);
+
 const router = express.Router();
 
 // Modul Health Check & OpenAPI Docs (publik - tanpa auth)
-router.use('/', healthRoutes);
-router.use('/docs', docsRoutes);
+router.use('/', unwrap(healthRoutes));
+router.use('/docs', unwrap(docsRoutes));
 
 // Modul Auth & Users
-router.use('/auth', authRoutes);
-router.use('/users', userRoutes);
+router.use('/auth', unwrap(authRoutes));
+router.use('/users', unwrap(userRoutes));
 
 // Modul Master Data (Fase 2)
-router.use('/', masterRoutes);
+router.use('/', unwrap(masterRoutes));
 
 // Modul Periode, Workflow Approval, & Submission Access (Fase 5)
-router.use('/', periodRoutes);
-router.use('/', workflowRoutes);
-router.use('/', submissionAccessRoutes);
-router.use('/', notificationRoutes);
+router.use('/', unwrap(periodRoutes));
+router.use('/', unwrap(workflowRoutes));
+router.use('/', unwrap(submissionAccessRoutes));
+router.use('/', unwrap(notificationRoutes));
 
 // Modul Dokumen Anggaran & Entry (Fase 3, 3b & 4)
-router.use('/', budgetRoutes);
-router.use('/', newItemRequestRoutes);
-router.use('/', investmentRoutes);
+router.use('/', unwrap(budgetRoutes));
+router.use('/', unwrap(newItemRequestRoutes));
+router.use('/', unwrap(investmentRoutes));
 
 // Modul Realisasi Jurnal Buku Besar (Fase 6)
-router.use('/', realizationRoutes);
+router.use('/', unwrap(realizationRoutes));
 
 // Modul Dashboard & Laporan (Fase 7)
-router.use('/', dashboardRoutes);
-router.use('/', reportRoutes);
+router.use('/', unwrap(dashboardRoutes));
+router.use('/', unwrap(reportRoutes));
 
 // Modul Audit Logs & Pengaturan Sistem (Fase 8)
-router.use('/audit-logs', auditLogRoutes);
-router.use('/settings', settingRoutes);
+router.use('/audit-logs', unwrap(auditLogRoutes));
+router.use('/settings', unwrap(settingRoutes));
 
 // Endpoint uji otorisasi unit (untuk verifikasi requireUnitAccess)
 router.get('/test-unit-access/:unit_id', requireAuth, requireUnitAccess, (req, res) => {

@@ -4,10 +4,22 @@ const helmet = require('helmet');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const db = require('../db');
-const routes = require('./routes');
-const errorHandler = require('./middleware/errorHandler');
-const { csrfProtection } = require('./middleware/csrfProtection');
-const { globalRateLimiter } = require('./middleware/rateLimiter');
+// Helper untuk menangani interop CommonJS vs ES Modules pada bundler Vercel/esbuild
+const unwrap = (m) => (m && m.default ? m.default : m);
+
+const rawRoutes = require('./routes');
+const routes = unwrap(rawRoutes);
+
+const rawErrorHandler = require('./middleware/errorHandler');
+const errorHandler = unwrap(rawErrorHandler);
+
+const rawCsrf = require('./middleware/csrfProtection');
+const csrfModule = unwrap(rawCsrf);
+const csrfProtection = csrfModule.csrfProtection || csrfModule;
+
+const rawRate = require('./middleware/rateLimiter');
+const rateModule = unwrap(rawRate);
+const globalRateLimiter = rateModule.globalRateLimiter || rateModule;
 
 // Validasi variabel lingkungan sesi dengan fallback aman untuk serverless/cloud
 const sessionSecret =
@@ -130,13 +142,26 @@ app.get('/', (req, res) => {
 });
 
 // Proteksi CSRF untuk semua rute (dengan prefix /api maupun langsung)
-app.use(['/api', '/'], csrfProtection);
+if (typeof csrfProtection === 'function') {
+  app.use('/api', csrfProtection);
+  app.use('/', csrfProtection);
+} else {
+  console.warn('[CONFIG WARNING] csrfProtection bukan function:', typeof csrfProtection);
+}
 
 // API Routes (mendukung dengan prefix /api maupun langsung)
-app.use('/api', routes);
-app.use('/', routes);
+if (typeof routes === 'function') {
+  app.use('/api', routes);
+  app.use('/', routes);
+} else {
+  console.error('[CONFIG ERROR] routes bukan function:', typeof routes);
+}
 
 // Error Handling Terpusat
-app.use(errorHandler);
+if (typeof errorHandler === 'function') {
+  app.use(errorHandler);
+} else {
+  console.error('[CONFIG ERROR] errorHandler bukan function:', typeof errorHandler);
+}
 
 module.exports = app;
