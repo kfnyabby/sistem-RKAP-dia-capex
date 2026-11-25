@@ -17,12 +17,8 @@ const unwrap = (m) => {
 let rawRoutes;
 try {
   rawRoutes = require('./routes/index.js');
-} catch {
-  try {
-    rawRoutes = require('./routes/index.cjs');
-  } catch {
-    rawRoutes = require('./routes');
-  }
+} catch (err) {
+  console.error('[REQUIRE-ROUTES-ERROR]:', err);
 }
 const routes = unwrap(rawRoutes);
 
